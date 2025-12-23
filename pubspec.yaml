@@ -41,12 +41,12 @@ dependencies:
   # Navigation
   go_router: ^15.0.1
   
-  # Firebase
-  firebase_core: ^3.10.0
-  firebase_auth: ^5.3.4
-  firebase_storage: ^12.3.10
-  cloud_firestore: ^5.6.0
-  firebase_messaging: ^15.1.6
+  # Firebase (temporarily disabled for initial build test)
+  # firebase_core: ^3.10.0
+  # firebase_auth: ^5.3.4
+  # firebase_storage: ^12.3.10
+  # cloud_firestore: ^5.6.0
+  # firebase_messaging: ^15.1.6
   
   # Utils
   intl: ^0.19.0
