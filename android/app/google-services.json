@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "924303074294",
+    "project_id": "hankookji-namgu",
+    "storage_bucket": "hankookji-namgu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:924303074294:android:cf5c6570cc8807b6ed1dd7",
+        "android_client_info": {
+          "package_name": "com.doyakmin.hangookji.namgu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPlVSROzgCZWdY-LCYmYHXdxriQnkFqkI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:924303074294:android:2c04f189de928e52ed1dd7",
+        "android_client_info": {
+          "package_name": "com.doyakmin.hankookji.namgu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPlVSROzgCZWdY-LCYmYHXdxriQnkFqkI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
