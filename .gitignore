@@ -23,6 +23,10 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Cursor AI rules and configurations (KEEP IN VERSION CONTROL)
+# .cursor/ is intentionally NOT ignored - we want to commit these files
+# so other developers and AI assistants can understand the project context
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id

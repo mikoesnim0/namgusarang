@@ -21,6 +21,7 @@ class AppSpacing {
   static const double paddingMD = md;
   static const double paddingLG = lg;
   static const double paddingXL = xl;
+  static const double paddingXXL = xxl;
 
   // Margin Presets
   static const double marginXS = xs;

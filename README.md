@@ -1,16 +1,325 @@
-# hangookji_namgu
+# 남구이야기 (Namgu Story)
 
-A new Flutter project.
+**걸으며 쿠폰을 얻고 사용해요** 🚶‍♀️💚
 
-## Getting Started
+부산 남구 지역 기반 쿠폰 & 미션 앱
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 프로젝트 정보
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **앱 이름**: 남구이야기 (Namgu Story)
+- **패키지명**: `com.doyakmin.hankookji.namgu`
+- **타겟**: 30~40대 여성, 부산시 남구
+- **출시 목표**: 2026년 2월 20일
+- **기술 스택**: Flutter + Firebase
+- **Repository**: https://github.com/mikoesnim0/namgusarang
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🎯 핵심 기능
+
+1. **쿠폰 시스템**: 할인/무료 쿠폰 발급 및 4자리 코드로 매장 사용
+2. **미션 시스템**: 걸음수, 장소 방문, 친구 초대 등 미션 완료 시 쿠폰 자동 발급
+3. **지도**: 주변 가맹점 표시 및 검색
+4. **알림**: 쿠폰 발급/만료, 미션 완료 등 푸시 알림
+5. **인증**: 이메일/비밀번호, 카카오 로그인
+
+## 🛠️ 기술 스택
+
+### Frontend
+- **Framework**: Flutter 3.x (Dart)
+- **UI**: Material 3 Design
+- **상태관리**: Riverpod
+- **네비게이션**: GoRouter
+
+### Backend
+- **Firebase Project**: `hankookji-namgu`
+- **Auth**: Firebase Authentication
+- **Database**: Cloud Firestore (Native mode)
+- **Storage**: Firebase Storage
+- **Push**: Firebase Cloud Messaging
+- **Functions**: Cloud Functions (asia-northeast3)
+
+### 지도
+- Kakao Map 또는 Naver Map API
+
+## 📁 프로젝트 구조
+
+```
+hangookji_namgu/
+├── lib/
+│   ├── main.dart                 # 앱 진입점
+│   ├── theme/                    # 디자인 시스템
+│   │   ├── app_colors.dart
+│   │   ├── app_typography.dart
+│   │   ├── app_spacing.dart
+│   │   └── app_theme.dart
+│   ├── widgets/                  # 공통 컴포넌트
+│   │   ├── app_button.dart
+│   │   ├── app_input.dart
+│   │   ├── app_card.dart
+│   │   └── app_loading.dart
+│   ├── screens/                  # 화면
+│   │   └── auth/
+│   │       ├── splash_screen.dart
+│   │       ├── login_screen.dart
+│   │       └── signup_screen.dart
+│   ├── services/                 # 서비스 레이어
+│   ├── models/                   # 데이터 모델
+│   ├── providers/                # Riverpod 프로바이더
+│   └── utils/                    # 유틸리티
+├── documents/                    # 📚 프로젝트 문서
+│   ├── prd/                      # 제품 요구사항 명세서
+│   ├── tech-spec/                # 기술 명세서
+│   ├── data-model/               # 데이터 모델 스키마
+│   └── planning/                 # 개발 일정 및 로그
+├── .cursor/                      # 🤖 Cursor AI 설정
+│   └── rules/                    # AI 코딩 가이드
+├── android/                      # Android 설정
+└── ios/                          # iOS 설정
+```
+
+## 📚 문서
+
+프로젝트의 모든 상세 문서는 `documents/` 폴더에 있습니다:
+
+### 필수 문서
+1. **[PRD (제품 요구사항)](documents/prd/남구이야기_PRD_v1.0.md)**
+   - 150개 요구사항 상세 정리
+   - 기능별 상세 스펙
+
+2. **[기술명세서](documents/tech-spec/기술명세서_v1.0.md)**
+   - 아키텍처 설계
+   - API 명세
+   - 보안 전략
+
+3. **[데이터 모델](documents/data-model/firestore-schema.md)**
+   - Firestore 컬렉션 구조
+   - 필드 타입 및 설명
+
+4. **[개발 일정](documents/planning/)**
+   - 개발일정표_v1.0.md
+   - 상세일정표_Gantt_v1.0.md
+   - 달력형_일정표_v1.0.md
+   - 작업로그.md
+
+### Cursor AI 가이드
+- **[프로젝트 개요](.cursor/rules/project-overview.md)**: 프로젝트 전체 구조와 컨벤션
+- **[Flutter 컨벤션](.cursor/rules/flutter-conventions.md)**: 코딩 스타일 가이드
+
+## 🚀 시작하기
+
+### 1. 환경 설정
+
+**필수 요구사항:**
+- Flutter SDK 3.x 이상
+- Dart SDK 3.x 이상
+- Android Studio (Android 개발)
+- Xcode (iOS 개발, macOS만)
+
+### 2. 설치
+
+```bash
+# 저장소 클론
+git clone https://github.com/mikoesnim0/namgusarang.git
+cd hangookji_namgu
+
+# 의존성 설치
+flutter pub get
+
+# Firebase 설정 확인
+# android/app/google-services.json 파일이 있는지 확인
+```
+
+### 3. 실행
+
+```bash
+# Chrome (빠른 UI 테스트)
+flutter run -d chrome
+
+# Android 실기기/에뮬레이터
+flutter devices  # 연결된 기기 확인
+flutter run -d <device_id>
+
+# iOS 시뮬레이터 (macOS only)
+flutter run -d ios
+```
+
+### 4. 빌드
+
+```bash
+# Android APK
+flutter build apk --release
+
+# Android App Bundle (Play Store)
+flutter build appbundle --release
+
+# iOS (macOS only)
+flutter build ios --release
+```
+
+## 🎨 디자인 시스템
+
+### 색상 팔레트
+```dart
+import 'package:hangookji_namgu/theme/app_colors.dart';
+
+AppColors.primary500    // 메인 그린
+AppColors.secondary500  // 세컨더리 틸
+AppColors.accent500     // 액센트 오렌지
+AppColors.success       // 성공 (그린)
+AppColors.error         // 에러 (레드)
+AppColors.warning       // 경고 (오렌지)
+AppColors.info          // 정보 (블루)
+```
+
+### 타이포그래피
+```dart
+import 'package:hangookji_namgu/theme/app_typography.dart';
+
+AppTypography.heading1   // 24px Bold
+AppTypography.heading2   // 20px Bold
+AppTypography.bodyLarge  // 16px Regular
+AppTypography.bodyMedium // 14px Regular
+AppTypography.caption    // 12px Regular
+```
+
+### 간격
+```dart
+import 'package:hangookji_namgu/theme/app_spacing.dart';
+
+AppSpacing.paddingXS   // 4px
+AppSpacing.paddingS    // 8px
+AppSpacing.paddingM    // 16px
+AppSpacing.paddingL    // 24px
+AppSpacing.paddingXL   // 32px
+AppSpacing.paddingXXL  // 48px
+```
+
+### 공통 컴포넌트
+```dart
+import 'package:hangookji_namgu/widgets/widgets.dart';
+
+AppButton(
+  text: '로그인',
+  onPressed: () {},
+  variant: ButtonVariant.primary,
+  size: ButtonSize.large,
+)
+
+AppInput(
+  label: '이메일',
+  placeholder: 'example@email.com',
+  onChanged: (value) {},
+)
+
+AppCard(
+  variant: CardVariant.elevated,
+  child: Text('내용'),
+)
+
+AppLoading()  // 전체 화면 로딩
+AppLoading.inline()  // 인라인 로딩
+```
+
+## 📝 코딩 컨벤션
+
+### 파일 & 클래스 명명
+```dart
+// 파일명: snake_case.dart
+user_profile_screen.dart
+auth_service.dart
+
+// 클래스명: PascalCase
+class UserProfileScreen {}
+class AuthService {}
+
+// 변수/함수: camelCase
+final String userName = 'John';
+void fetchUserData() {}
+```
+
+### 커밋 메시지
+```bash
+feat: 새로운 기능 추가
+fix: 버그 수정
+docs: 문서 수정
+style: 코드 포맷팅
+refactor: 코드 리팩토링
+test: 테스트 추가/수정
+chore: 빌드/설정 변경
+```
+
+**예시:**
+```bash
+git commit -m "feat: Splash 화면 구현"
+git commit -m "fix: 로그인 버튼 클릭 오류 수정"
+git commit -m "docs: README에 설치 가이드 추가"
+```
+
+## 🧪 테스트
+
+```bash
+# 단위 테스트
+flutter test
+
+# 통합 테스트
+flutter test integration_test
+
+# 테스트 커버리지
+flutter test --coverage
+```
+
+## 🐛 문제 해결
+
+### Android 빌드 실패
+```bash
+# Gradle 캐시 클리어
+cd android
+./gradlew clean
+cd ..
+flutter clean
+flutter pub get
+```
+
+### Firebase 연결 오류
+1. `android/app/google-services.json` 파일 확인
+2. 패키지명이 `com.doyakmin.hankookji.namgu`인지 확인
+3. Firebase Console에서 SHA-1 지문 등록 (Release 빌드 시)
+
+### 네트워크 타임아웃
+- VPN 끄기
+- DNS를 8.8.8.8 (Google DNS)로 변경
+- Gradle 재시도: `cd android && ./gradlew build --refresh-dependencies`
+
+## 🤖 Cursor AI로 개발하기
+
+이 프로젝트는 **Cursor AI가 쉽게 이해할 수 있도록 구조화**되었습니다.
+
+### AI가 참고할 문서
+1. `.cursor/rules/project-overview.md` - 프로젝트 전체 개요
+2. `.cursor/rules/flutter-conventions.md` - 코딩 컨벤션
+3. `documents/prd/` - 제품 요구사항
+4. `documents/planning/작업로그.md` - 개발 히스토리
+
+### AI에게 요청하기
+```
+"Splash 화면에 앱 버전 표시 추가해줘"
+"Firebase Auth로 이메일 로그인 구현해줘"
+"쿠폰 리스트 화면 만들어줘 (AppCard 사용)"
+```
+
+## 📞 연락처
+
+- **Repository**: https://github.com/mikoesnim0/namgusarang
+- **Firebase Console**: https://console.firebase.google.com/project/hankookji-namgu
+
+## 📄 라이센스
+
+Private Project - All Rights Reserved
+
+---
+
+**개발 진행 상황**: Week 1 - Day 1-2 완료 ✅  
+**마지막 업데이트**: 2024-12-27
+
+💚 **남구이야기와 함께 걸으며 즐거운 하루 되세요!** 💚
