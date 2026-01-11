@@ -57,3 +57,6 @@ app.*.map.json
 # Flutter plugins
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# FVM Version Cache
+.fvm/

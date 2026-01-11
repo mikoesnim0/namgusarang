@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/widgets.dart';
+import '../../features/auth/auth_controller.dart';
 
 /// 로그인 화면
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -31,35 +33,39 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: Firebase 인증 연동
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      // TODO: 홈 화면으로 이동
-      // Navigator.pushReplacementNamed(context, '/home');
-    }
+    await ref.read(authControllerProvider.notifier).signInWithEmail(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+    final st = ref.read(authControllerProvider);
+    st.whenOrNull(
+      data: (_) => context.go('/home'),
+      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyAuthError(e))),
+      ),
+    );
   }
 
   Future<void> _handleKakaoLogin() async {
-    // TODO: 카카오 로그인 연동
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('카카오 로그인 준비 중입니다')),
+    await ref.read(authControllerProvider.notifier).signInWithKakao();
+    final st = ref.read(authControllerProvider);
+    st.whenOrNull(
+      data: (_) => context.go('/home'),
+      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyAuthError(e))),
+      ),
     );
   }
 
   void _navigateToSignup() {
-    Navigator.pushNamed(context, '/signup');
+    context.push('/signup');
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -150,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 AppButton(
                   text: '로그인',
                   onPressed: _handleLogin,
-                  isLoading: _isLoading,
+                  isLoading: isLoading,
                   isFullWidth: true,
                 ),
 
@@ -182,6 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   text: '카카오로 로그인',
                   onPressed: _handleKakaoLogin,
                   variant: ButtonVariant.secondary,
+                  isLoading: isLoading,
                   isFullWidth: true,
                   icon: const Icon(Icons.chat_bubble, size: 20),
                 ),

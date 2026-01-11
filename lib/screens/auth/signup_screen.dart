@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/widgets.dart';
+import '../../features/auth/auth_controller.dart';
 
 /// 회원가입 화면
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,7 +28,6 @@ class _SignupScreenState extends State<SignupScreen> {
   String _selectedGender = '';
   bool _termsAgreed = false;
   bool _privacyAgreed = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -56,23 +58,25 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    // TODO: Firebase 회원가입 연동
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      // TODO: 홈 화면으로 이동
-      // Navigator.pushReplacementNamed(context, '/home');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입이 완료되었습니다!')),
-      );
-    }
+    await ref.read(authControllerProvider.notifier).signUpWithEmail(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          nickname: _nicknameController.text.trim(),
+          birthdate: _birthdateController.text.trim(),
+          gender: _selectedGender,
+        );
+    final st = ref.read(authControllerProvider);
+    st.whenOrNull(
+      data: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입이 완료되었습니다!')),
+        );
+        context.go('/home');
+      },
+      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyAuthError(e))),
+      ),
+    );
   }
 
   Future<void> _selectBirthdate() async {
@@ -103,6 +107,9 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('회원가입'),
@@ -298,7 +305,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 AppButton(
                   text: '회원가입',
                   onPressed: _handleSignup,
-                  isLoading: _isLoading,
+                  isLoading: isLoading,
                   isFullWidth: true,
                   size: ButtonSize.large,
                 ),
@@ -317,7 +324,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context);
+                        context.pop();
                       },
                       child: const Text('로그인'),
                     ),

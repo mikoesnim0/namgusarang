@@ -157,6 +157,110 @@ flutter build appbundle --release
 flutter build ios --release
 ```
 
+---
+
+## 📦 Android / iOS 스토어 배포(실전 체크리스트)
+
+### 현재 repo에서 확인된 포인트(중요)
+- **Android applicationId**: `com.doyakmin.hankookji.namgu` (`android/app/build.gradle.kts`)
+- **iOS Bundle ID**: `com.doyakmin.hankookji.namgu` (`ios/Runner.xcodeproj/project.pbxproj`)
+- **Android 릴리즈 서명**: `android/key.properties`가 있으면 릴리즈 키로 서명, 없으면 디버그 키로 fallback
+
+### 0) 공통: 버전 올리기
+- `pubspec.yaml`의 `version: 1.0.0+1`에서
+  - **1.0.1+2** 처럼 `+` 뒤 build number는 매 업로드마다 증가
+
+### 1) Android (Google Play)
+
+#### (A) 업로드 키 생성 (최초 1회)
+```bash
+cd namgusarang/android
+keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+#### (B) `android/key.properties` 만들기 (로컬만)
+- `android/key.properties.example`를 복사해서 실제 값으로 채우기
+- `key.properties`/`*.jks`는 `.gitignore`됨
+
+#### (C) AAB 빌드
+```bash
+cd namgusarang
+fvm flutter build appbundle --release
+```
+출력: `build/app/outputs/bundle/release/app-release.aab`
+
+### 2) iOS (App Store Connect)
+
+#### (A) Xcode에서 Signing 설정 (최초 1회)
+- `ios/Runner.xcworkspace` 열기
+- Runner Target > **Signing & Capabilities**
+  - Team 선택 (Apple Developer 계정)
+  - Bundle Identifier: `com.doyakmin.hankookji.namgu`
+
+#### (B) IPA 빌드
+```bash
+cd namgusarang
+fvm flutter build ipa --release
+```
+업로드: Xcode Organizer(Archive/Distribute) 또는 Transporter 사용
+
+---
+
+## 🔥 Firebase 실데이터 연결: 추천 전개 순서
+
+### 1) iOS Firebase 옵션부터 정상화(필수)
+현재 `lib/firebase_options.dart`의 iOS `appId`가 placeholder라서,
+**Firebase 콘솔에 iOS 앱을 등록한 뒤 FlutterFire CLI로 재생성**하는 게 안전합니다.
+
+권장:
+```bash
+cd namgusarang
+flutterfire configure
+```
+
+### 2) Auth 먼저(이메일/비번)
+- 회원가입 성공 → `/users/{uid}` 생성
+- 로그인 성공 → `/users/{uid}.lastLogin` 업데이트
+
+### 3) Firestore Repository로 더미를 “치환”
+- 예: 쿠폰/미션/친구/프로필의 더미 모델을
+  - `FirestoreCouponsRepository`
+  - `FirestoreMissionsRepository`
+  - `FirestoreUsersRepository`
+  형태로 만들고 Riverpod `AsyncNotifier`로 연결
+
+### 4) 쿠폰 사용/발급/미션완료는 Functions 권장
+문서(`documents/data-model/firestore-schema.md`)에도 써있듯이,
+status 전환/검증은 클라이언트가 아니라 **Cloud Functions 트랜잭션**으로 처리하는 게 치팅 방지에 좋습니다.
+
+---
+
+## 🟡 카카오 로그인 + Firebase Auth 연결
+
+이 프로젝트에서 카카오 로그인은 Firebase 기본 OAuth provider로 바로 붙기 어렵기 때문에,
+**Callable Functions로 Kakao access token을 검증 → Firebase Custom Token을 발급**하는 패턴을 사용합니다.
+
+- 문서: `documents/tech-spec/firebase-kakao-auth.md`
+- Flutter 설정:
+  - `--dart-define=KAKAO_NATIVE_APP_KEY=...`
+  - Android: `android/local.properties`에 `kakao.native_app_key=...`
+  - iOS: `ios/Flutter/Local.xcconfig` 생성 후 `KAKAO_NATIVE_APP_KEY=...`
+
+### Firebase Functions 배포(가장 빠른 방법: npm + firebase-tools)
+
+```bash
+cd namgusarang
+npm i -g firebase-tools
+firebase login
+firebase use hankookji-namgu
+cd functions
+npm i
+npm run deploy
+```
+
+배포 후 앱에서 카카오 로그인 버튼을 누르면,
+Callable `authWithKakao`가 실행되고 Firebase Custom Token으로 로그인됩니다.
+
 ## 🎨 디자인 시스템
 
 ### 색상 팔레트

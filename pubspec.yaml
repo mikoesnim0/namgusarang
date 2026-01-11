@@ -41,16 +41,20 @@ dependencies:
   # Navigation
   go_router: ^15.0.1
   
-  # Firebase (temporarily disabled for quick build test)
-  # firebase_core: ^3.10.0
-  # firebase_auth: ^5.3.4
-  # firebase_storage: ^12.3.10
-  # cloud_firestore: ^5.6.0
-  # firebase_messaging: ^15.1.6
+  # Firebase
+  firebase_core: ^3.10.0
+  firebase_auth: ^5.3.4
+  firebase_storage: ^12.3.10
+  cloud_firestore: ^5.6.0
+  firebase_messaging: ^15.1.6
+  cloud_functions: ^5.3.4
+  kakao_flutter_sdk_user: ^1.9.7
   
   # Utils
   intl: ^0.19.0
   shared_preferences: ^2.3.4
+  url_launcher: ^6.3.0
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_test:

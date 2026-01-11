@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
@@ -46,8 +47,8 @@ class _SplashScreenState extends State<SplashScreen>
     // 2초 후 로그인 화면으로 이동 (실제로는 인증 상태 확인 후 분기)
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        // TODO: 인증 상태 확인 후 적절한 화면으로 이동
-        Navigator.pushReplacementNamed(context, '/login');
+        // TODO: Firebase Auth 연결 후: 로그인 상태면 /home, 아니면 /login
+        context.go('/login');
       }
     });
   }
