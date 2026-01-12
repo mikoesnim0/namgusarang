@@ -28,15 +28,32 @@ void main() async {
 }
 
 Future<void> _initFirebaseIfSupported() async {
-  // 현재 repo는 Android는 google-services.json이 있고,
-  // iOS/macOS는 FlutterFire 옵션/플리스트가 없어서 초기화 시 크래시가 날 수 있음.
-  // 그래서 Android/iOS에서만 시도하고, 실패해도 앱 부팅은 되게 둠.
+  // Android/iOS/macOS에서 Firebase를 초기화합니다.
+  // macOS에서 plist 기반(implicit) 초기화는 설정 불일치로 "CONFIGURATION_NOT_FOUND"를 유발할 수 있어,
+  // FlutterFire가 생성한 options를 항상 사용합니다.
   if (kIsWeb) return;
 
   final platform = defaultTargetPlatform;
   final isSupported =
-      platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+      platform == TargetPlatform.android ||
+      platform == TargetPlatform.iOS ||
+      platform == TargetPlatform.macOS;
   if (!isSupported) return;
+
+  // Quick sanity check: macOS에서 iOS App ID를 쓰면 Auth에서 CONFIGURATION_NOT_FOUND(HTTP 400)로 터집니다.
+  // (지금 프로젝트가 딱 이 케이스: firebase_options.dart의 macos.appId가 ...:ios:... 인 상태)
+  if (platform == TargetPlatform.macOS) {
+    final macosAppId = DefaultFirebaseOptions.macos.appId;
+    if (macosAppId.contains(':ios:')) {
+      debugPrint(
+        'Firebase misconfiguration: macOS is using an iOS GOOGLE_APP_ID ($macosAppId). '
+        'Run flutterfire configure with macOS enabled and ensure macOS GOOGLE_APP_ID is ...:macos:...',
+      );
+      // Intentionally skip Firebase init on macOS in this misconfigured state to avoid
+      // runtime auth calls failing with CONFIGURATION_NOT_FOUND/internal-error.
+      return;
+    }
+  }
 
   try {
     await Firebase.initializeApp(

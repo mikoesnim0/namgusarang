@@ -1,7 +1,1 @@
-{
-  "functions": [
-    {
-      "source": "functions"
-    }
-  ]
-}
+{"functions":[{"source":"functions"}],"flutter":{"platforms":{"android":{"default":{"projectId":"hankookji-namgu","appId":"1:924303074294:android:cf5c6570cc8807b6ed1dd7","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"hankookji-namgu","appId":"1:924303074294:ios:4d44e122d75fd2d2ed1dd7","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"hankookji-namgu","appId":"1:924303074294:ios:4d44e122d75fd2d2ed1dd7","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"hankookji-namgu","configurations":{"android":"1:924303074294:android:cf5c6570cc8807b6ed1dd7"}}}}}}

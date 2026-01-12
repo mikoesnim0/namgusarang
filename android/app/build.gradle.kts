@@ -9,7 +9,7 @@ plugins {
 import java.util.Properties
 
 android {
-    namespace = "com.doyakmin.hankookji.namgu"
+    namespace = "com.doyakmin.hangookji.namgu"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.doyakmin.hankookji.namgu"
+        applicationId = "com.doyakmin.hangookji.namgu"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

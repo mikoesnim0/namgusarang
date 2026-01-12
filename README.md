@@ -9,7 +9,7 @@
 ## 📱 프로젝트 정보
 
 - **앱 이름**: 남구이야기 (Namgu Story)
-- **패키지명**: `com.doyakmin.hankookji.namgu`
+- **패키지명**: `com.doyakmin.hangookji.namgu`
 - **타겟**: 30~40대 여성, 부산시 남구
 - **출시 목표**: 2026년 2월 20일
 - **기술 스택**: Flutter + Firebase
@@ -162,8 +162,8 @@ flutter build ios --release
 ## 📦 Android / iOS 스토어 배포(실전 체크리스트)
 
 ### 현재 repo에서 확인된 포인트(중요)
-- **Android applicationId**: `com.doyakmin.hankookji.namgu` (`android/app/build.gradle.kts`)
-- **iOS Bundle ID**: `com.doyakmin.hankookji.namgu` (`ios/Runner.xcodeproj/project.pbxproj`)
+- **Android applicationId**: `com.doyakmin.hangookji.namgu` (`android/app/build.gradle.kts`)
+- **iOS Bundle ID**: `com.doyakmin.hangookji.namgu` (`ios/Runner.xcodeproj/project.pbxproj`)
 - **Android 릴리즈 서명**: `android/key.properties`가 있으면 릴리즈 키로 서명, 없으면 디버그 키로 fallback
 
 ### 0) 공통: 버전 올리기
@@ -387,7 +387,7 @@ flutter pub get
 
 ### Firebase 연결 오류
 1. `android/app/google-services.json` 파일 확인
-2. 패키지명이 `com.doyakmin.hankookji.namgu`인지 확인
+2. 패키지명이 `com.doyakmin.hangookji.namgu`인지 확인
 3. Firebase Console에서 SHA-1 지문 등록 (Release 빌드 시)
 
 ### 네트워크 타임아웃

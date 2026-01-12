@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -28,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macOS - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -58,11 +49,41 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDPlVSROzgCZWdY-LCYmYHXdxriQnkFqkI',
-    appId: '1:924303074294:ios:your_ios_app_id_here', // TODO: iOS App ID 확인 필요
+    apiKey: 'AIzaSyCKsLuCIADn22vOapWhXWVMGmYJFn6RCl4',
+    appId: '1:924303074294:ios:4d44e122d75fd2d2ed1dd7',
     messagingSenderId: '924303074294',
     projectId: 'hankookji-namgu',
     storageBucket: 'hankookji-namgu.firebasestorage.app',
-    iosBundleId: 'com.doyakmin.hankookji.namgu',
+    iosBundleId: 'com.doyakmin.hangookji.namgu',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBRFMQyRp5uI5mH04xvmMVLiX8FCRApZm0',
+    appId: '1:924303074294:web:954fac8b1cdd5fe8ed1dd7',
+    messagingSenderId: '924303074294',
+    projectId: 'hankookji-namgu',
+    authDomain: 'hankookji-namgu.firebaseapp.com',
+    storageBucket: 'hankookji-namgu.firebasestorage.app',
+    measurementId: 'G-9P2F9JQ03C',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCKsLuCIADn22vOapWhXWVMGmYJFn6RCl4',
+    appId: '1:924303074294:ios:4d44e122d75fd2d2ed1dd7',
+    messagingSenderId: '924303074294',
+    projectId: 'hankookji-namgu',
+    storageBucket: 'hankookji-namgu.firebasestorage.app',
+    iosBundleId: 'com.doyakmin.hangookji.namgu',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBRFMQyRp5uI5mH04xvmMVLiX8FCRApZm0',
+    appId: '1:924303074294:web:41ec5d2940314b6aed1dd7',
+    messagingSenderId: '924303074294',
+    projectId: 'hankookji-namgu',
+    authDomain: 'hankookji-namgu.firebaseapp.com',
+    storageBucket: 'hankookji-namgu.firebasestorage.app',
+    measurementId: 'G-RV04FLCH71',
+  );
+
 }

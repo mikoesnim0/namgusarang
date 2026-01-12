@@ -29,6 +29,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _termsAgreed = false;
   bool _privacyAgreed = false;
 
+  void _clearForm() {
+    _formKey.currentState?.reset();
+    _emailController.clear();
+    _passwordController.clear();
+    _passwordConfirmController.clear();
+    _nicknameController.clear();
+    _birthdateController.clear();
+    _selectedGender = '';
+    _termsAgreed = false;
+    _privacyAgreed = false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Ensure fresh form state when entering this screen.
+    _clearForm();
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -65,18 +85,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           birthdate: _birthdateController.text.trim(),
           gender: _selectedGender,
         );
-    final st = ref.read(authControllerProvider);
-    st.whenOrNull(
-      data: (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('회원가입이 완료되었습니다!')),
-        );
-        context.go('/home');
-      },
-      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyAuthError(e))),
-      ),
-    );
   }
 
   Future<void> _selectBirthdate() async {
@@ -107,8 +115,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authControllerProvider);
-    final isLoading = authState.isLoading;
+    // Listen in build (Riverpod constraint).
+    ref.listen<AsyncValue<void>>(authControllerProvider, (prev, next) {
+      next.whenOrNull(
+        data: (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('회원가입이 완료되었습니다!')),
+          );
+          _clearForm();
+          context.go('/home');
+        },
+        error: (e, _) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(friendlyAuthError(e))),
+          );
+        },
+      );
+    });
+
+    final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return Scaffold(
       appBar: AppBar(

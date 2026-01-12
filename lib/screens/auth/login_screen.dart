@@ -37,32 +37,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-    final st = ref.read(authControllerProvider);
-    st.whenOrNull(
-      data: (_) => context.go('/home'),
-      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyAuthError(e))),
-      ),
-    );
   }
 
   Future<void> _handleKakaoLogin() async {
     await ref.read(authControllerProvider.notifier).signInWithKakao();
-    final st = ref.read(authControllerProvider);
-    st.whenOrNull(
-      data: (_) => context.go('/home'),
-      error: (e, _) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendlyAuthError(e))),
-      ),
-    );
   }
 
   void _navigateToSignup() {
+    // Avoid carrying password around if the user goes to signup.
+    _passwordController.clear();
     context.push('/signup');
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen in build (Riverpod constraint) to avoid stale reads / races.
+    ref.listen<AsyncValue<void>>(authControllerProvider, (prev, next) {
+      next.whenOrNull(
+        data: (_) {
+          if (!mounted) return;
+          _passwordController.clear();
+          context.go('/home');
+        },
+        error: (e, _) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(friendlyAuthError(e))),
+          );
+        },
+      );
+    });
+
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
 

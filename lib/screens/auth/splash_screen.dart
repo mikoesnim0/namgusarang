@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
+import '../../firebase_options.dart';
 
 /// 스플래시 화면
 /// 앱 시작 시 표시되는 첫 화면
@@ -48,7 +50,15 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         // TODO: Firebase Auth 연결 후: 로그인 상태면 /home, 아니면 /login
-        context.go('/login');
+        //
+        // macOS 임시 우회:
+        // 현재 프로젝트는 macOS Firebase가 iOS App ID(...:ios:...)로 구성되어 Auth가 CONFIGURATION_NOT_FOUND로 항상 실패.
+        // 개발 진행을 위해 이 상태에서는 로그인 화면을 스킵하고 홈으로 진입시킨다.
+        final shouldBypassAuthOnMacOS = !kReleaseMode &&
+            defaultTargetPlatform == TargetPlatform.macOS &&
+            DefaultFirebaseOptions.macos.appId.contains(':ios:');
+
+        context.go(shouldBypassAuthOnMacOS ? '/home' : '/login');
       }
     });
   }
