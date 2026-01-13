@@ -35,14 +35,18 @@ class SettingsScreen extends ConsumerWidget {
       data: (settings) {
         final authUser = authUserAsync.valueOrNull;
         final userDoc = userDocAsync.valueOrNull;
+        final authDisplayName = authUser?.displayName?.trim();
+        final authEmail = authUser?.email?.trim();
         final nickname =
             (userDoc?['nickname'] as String?)?.trim().isNotEmpty == true
                 ? (userDoc?['nickname'] as String)
-                : settings.profile.nickname;
+                : (authDisplayName?.isNotEmpty == true
+                    ? authDisplayName!
+                    : settings.profile.nickname);
         final email =
             (userDoc?['email'] as String?)?.trim().isNotEmpty == true
                 ? (userDoc?['email'] as String)
-                : (authUser?.email ?? settings.profile.email);
+                : (authEmail?.isNotEmpty == true ? authEmail! : settings.profile.email);
 
         return ListTile(
           contentPadding: EdgeInsets.zero,

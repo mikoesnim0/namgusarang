@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -120,12 +121,17 @@ class AuthController extends AsyncNotifier<void> {
       final kakao = ref.read(kakaoAuthRepositoryProvider);
       final users = ref.read(usersRepositoryProvider);
 
-      final firebaseToken = await kakao.signInAndGetFirebaseToken();
-      final cred = await auth.signInWithCustomToken(firebaseToken);
+      final result = await kakao.signInAndGetFirebaseToken();
+      final cred = await auth.signInWithCustomToken(result.firebaseToken);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
 
-      await users.upsertOnAuth(user: user, email: user.email);
+      await users.upsertOnAuth(user: user, email: result.kakaoEmail ?? user.email);
+      await users.updateProfile(
+        uid: user.uid,
+        nickname: result.kakaoNickname,
+        photoUrl: result.kakaoPhotoURL,
+      );
     });
   }
 
@@ -159,6 +165,9 @@ String debugAuthErrorDetails(Object error, StackTrace? stackTrace) {
       'firebase.code: ${e.code}',
       'firebase.message: ${e.message}',
     ]);
+    if (e is FirebaseFunctionsException) {
+      lines.add('firebase.details: ${e.details}');
+    }
   } else {
     lines.add('message: $e');
   }

@@ -41,13 +41,17 @@ class FirestoreUsersRepository {
   Future<void> updateProfile({
     required String uid,
     String? nickname,
+    String? photoUrl,
     String? birthdate,
+    String? ageRange,
     String? gender,
   }) async {
     final ref = _userRef(uid);
     final update = <String, dynamic>{};
     if (nickname != null) update['nickname'] = nickname;
+    if (photoUrl != null) update['photoUrl'] = photoUrl;
     if (birthdate != null) update['birthdate'] = birthdate;
+    if (ageRange != null) update['ageRange'] = ageRange;
     if (gender != null) update['gender'] = gender;
 
     if (update.isEmpty) return;

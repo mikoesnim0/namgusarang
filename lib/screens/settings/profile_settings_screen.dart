@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 import '../../features/settings/settings_model.dart';
 import '../../features/settings/settings_provider.dart';
-import 'package:hangookji_namgu/features/auth/auth_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
@@ -27,6 +26,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   AgeRange? _ageRange;
   Gender? _gender;
+  bool _didHydrate = false;
 
   @override
   void initState() {
@@ -42,11 +42,20 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     super.dispose();
   }
 
-  void _hydrate(ProfileSettings p) {
-    _nicknameController.text = p.nickname;
-    _emailController.text = p.email;
-    _ageRange ??= p.ageRange;
-    _gender ??= p.gender;
+  AgeRange? _parseAgeRange(String? raw) {
+    if (raw == null) return null;
+    for (final v in AgeRange.values) {
+      if (v.name == raw) return v;
+    }
+    return null;
+  }
+
+  Gender? _parseGender(String? raw) {
+    if (raw == null) return null;
+    for (final v in Gender.values) {
+      if (v.name == raw) return v;
+    }
+    return null;
   }
 
   Future<void> _save(ProfileSettings current) async {
@@ -60,23 +69,37 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     await ref.read(settingsControllerProvider.notifier).updateProfile(next);
 
     // Also sync to Firestore user profile (so signup/profile reflect real user data).
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user != null) {
-      final users = ref.read(usersRepositoryProvider);
-      final nickname = next.nickname.trim();
-      final available = await users.isNicknameAvailable(
-        nickname,
-        ignoreUid: user.uid,
-      );
-      if (!available) {
-        throw const AuthUnavailableException('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.');
+    try {
+      final user = ref.read(authStateProvider).valueOrNull;
+      if (user != null) {
+        final users = ref.read(usersRepositoryProvider);
+        final nickname = next.nickname.trim();
+        final available = await users.isNicknameAvailable(
+          nickname,
+          ignoreUid: user.uid,
+        );
+        if (!available) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.')),
+            );
+          }
+          return;
+        }
+        await users.updateProfile(
+          uid: user.uid,
+          nickname: nickname,
+          gender: next.gender.name,
+          ageRange: next.ageRange.name,
+        );
       }
-      await users.updateProfile(
-        uid: user.uid,
-        nickname: nickname,
-        gender: next.gender.name,
-        birthdate: next.ageRange.name,
-      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('프로필 저장 실패: $e')),
+        );
+      }
+      return;
     }
 
     if (mounted) {
@@ -89,6 +112,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(settingsControllerProvider);
+    final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
+    final authUser = ref.watch(authStateProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('프로필')),
@@ -100,7 +125,24 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         ),
         data: (settings) {
           final p = settings.profile;
-          _hydrate(p);
+          if (!_didHydrate) {
+            final docNickname = (userDoc?['nickname'] as String?)?.trim();
+            final docEmail = (userDoc?['email'] as String?)?.trim();
+            final docAgeRange = userDoc?['ageRange'] as String?;
+            final docGender = userDoc?['gender'] as String?;
+
+            _nicknameController.text =
+                (docNickname?.isNotEmpty == true) ? docNickname! : p.nickname;
+            _emailController.text = (docEmail?.isNotEmpty == true)
+                ? docEmail!
+                : (authUser?.email?.trim().isNotEmpty == true
+                    ? authUser!.email!.trim()
+                    : p.email);
+
+            _ageRange = _parseAgeRange(docAgeRange) ?? p.ageRange;
+            _gender = _parseGender(docGender) ?? p.gender;
+            _didHydrate = true;
+          }
           return SingleChildScrollView(
             padding: AppTheme.screenPadding,
             child: Form(

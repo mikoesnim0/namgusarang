@@ -11,7 +11,7 @@ class KakaoAuthRepository {
   FirebaseFunctions get _functions =>
       FirebaseFunctions.instanceFor(region: _region);
 
-  Future<String> signInAndGetFirebaseToken() async {
+  Future<KakaoSignInResult> signInAndGetFirebaseToken() async {
     // kakao_flutter_sdk_user does NOT support macOS method channels.
     // On macOS this throws MissingPluginException (e.g. isKakaoTalkInstalled).
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
@@ -55,7 +55,28 @@ class KakaoAuthRepository {
     if (token is! String || token.isEmpty) {
       throw StateError('Invalid authWithKakao response: firebaseToken missing');
     }
-    return token;
+    return KakaoSignInResult(
+      firebaseToken: token,
+      kakaoEmail: data['kakaoEmail'] is String ? data['kakaoEmail'] as String : null,
+      kakaoNickname:
+          data['kakaoNickname'] is String ? data['kakaoNickname'] as String : null,
+      kakaoPhotoURL:
+          data['kakaoPhotoURL'] is String ? data['kakaoPhotoURL'] as String : null,
+    );
   }
+}
+
+class KakaoSignInResult {
+  const KakaoSignInResult({
+    required this.firebaseToken,
+    this.kakaoEmail,
+    this.kakaoNickname,
+    this.kakaoPhotoURL,
+  });
+
+  final String firebaseToken;
+  final String? kakaoEmail;
+  final String? kakaoNickname;
+  final String? kakaoPhotoURL;
 }
 
