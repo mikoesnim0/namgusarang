@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/auth_providers.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -15,8 +16,31 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final nickname = settings?.profile.nickname ?? '닉네임';
-    final email = settings?.profile.email ?? 'abcd@gmail.com';
+    final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+
+    final docNickname = (userDoc?['nickname'] as String?)?.trim();
+    final docEmail = (userDoc?['email'] as String?)?.trim();
+    final authNickname = authUser?.displayName?.trim();
+    final authEmail = authUser?.email?.trim();
+    final settingsNickname = settings?.profile.nickname.trim();
+    final settingsEmail = settings?.profile.email.trim();
+
+    final nickname = (docNickname?.isNotEmpty == true)
+        ? docNickname!
+        : (authNickname?.isNotEmpty == true)
+            ? authNickname!
+            : (settingsNickname?.isNotEmpty == true)
+                ? settingsNickname!
+                : '닉네임';
+
+    final email = (docEmail?.isNotEmpty == true)
+        ? docEmail!
+        : (authEmail?.isNotEmpty == true)
+            ? authEmail!
+            : (settingsEmail?.isNotEmpty == true)
+                ? settingsEmail!
+                : '이메일';
 
     return Scaffold(
       appBar: AppBar(
