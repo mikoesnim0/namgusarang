@@ -23,6 +23,10 @@ class FirebaseAuthRepository {
     return _auth.signInWithCustomToken(token);
   }
 
+  Future<UserCredential> signInWithCredential(AuthCredential credential) {
+    return _auth.signInWithCredential(credential);
+  }
+
   Future<void> signOut() => _auth.signOut();
 }
 

@@ -46,6 +46,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authControllerProvider.notifier).signInWithKakao();
   }
 
+  Future<void> _handleGoogleLogin() async {
+    await ref.read(authControllerProvider.notifier).signInWithGoogle();
+  }
+
+  Future<void> _handleAppleLogin() async {
+    await ref.read(authControllerProvider.notifier).signInWithApple();
+  }
+
   void _navigateToSignup() {
     // Avoid carrying password around if the user goes to signup.
     _passwordController.clear();
@@ -111,6 +119,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isKakaoSupported =
         (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) &&
             kakaoKey.isNotEmpty;
+    final isGoogleSupported =
+        kIsWeb || defaultTargetPlatform != TargetPlatform.macOS;
+    final isAppleSupported = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS);
 
     return Scaffold(
       body: SafeArea(
@@ -238,12 +251,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   isFullWidth: true,
                   icon: const Icon(Icons.chat_bubble, size: 20),
                 ),
+                const SizedBox(height: AppSpacing.paddingMD),
+
+                // Google 로그인
+                AppButton(
+                  text: 'Google로 로그인',
+                  onPressed: isGoogleSupported ? _handleGoogleLogin : null,
+                  variant: ButtonVariant.secondary,
+                  isLoading: isLoading,
+                  isFullWidth: true,
+                  icon: const Icon(Icons.g_mobiledata, size: 24),
+                ),
+
+                const SizedBox(height: AppSpacing.paddingMD),
+
+                // Apple 로그인
+                AppButton(
+                  text: 'Apple로 로그인',
+                  onPressed: isAppleSupported ? _handleAppleLogin : null,
+                  variant: ButtonVariant.secondary,
+                  isLoading: isLoading,
+                  isFullWidth: true,
+                  icon: const Icon(Icons.apple, size: 20),
+                ),
                 if (!isKakaoSupported) ...[
                   const SizedBox(height: AppSpacing.paddingSM),
                   Text(
                     defaultTargetPlatform == TargetPlatform.macOS
                         ? 'macOS에서는 카카오 로그인이 지원되지 않습니다. (Android/iOS에서 테스트해주세요)'
                         : '카카오 키가 설정되지 않았습니다. `--dart-define=KAKAO_NATIVE_APP_KEY=...`로 실행해주세요.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                if (!isGoogleSupported) ...[
+                  const SizedBox(height: AppSpacing.paddingSM),
+                  Text(
+                    'macOS에서는 Google 로그인이 지원되지 않습니다. (iOS/Android에서 테스트해주세요)',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                if (!isAppleSupported) ...[
+                  const SizedBox(height: AppSpacing.paddingSM),
+                  Text(
+                    'Apple 로그인은 iOS/macOS에서만 지원됩니다.',
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),

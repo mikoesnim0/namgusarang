@@ -263,6 +263,41 @@ Callable `authWithKakao`가 실행되고 Firebase Custom Token으로 로그인�
 
 ---
 
+## 🔵 Google / 🍎 Apple 로그인
+
+Google/Apple은 **Firebase Authentication의 기본 OAuth Provider**를 사용합니다.  
+로그인 성공 후에는 앱에서 공통 로직으로 `users/{uid}` 문서를 upsert 해서 유저 정보를 통합 관리합니다.
+
+### 1) Firebase Console 설정
+- Firebase Console → **Authentication → 로그인 방법**
+  - **Google** 활성화
+  - **Apple** 활성화
+
+### 2) iOS 설정
+
+#### (A) Google 로그인 (URL scheme)
+- `flutterfire configure`로 `ios/Runner/GoogleService-Info.plist`가 최신인지 확인
+- `ios/Runner/Info.plist`의 `CFBundleURLTypes`에 **Google URL scheme** 추가 필요
+  - `GoogleService-Info.plist` 안의 `REVERSED_CLIENT_ID` 값을 URL scheme으로 넣습니다.
+
+#### (B) Apple 로그인 (Capability)
+- Xcode에서 `ios/Runner.xcworkspace` 열기
+- Runner Target → **Signing & Capabilities**
+  - **Sign In with Apple** capability 추가
+
+> Apple Provider가 동작하려면 Apple Developer 설정(Team ID / Key / Services ID 등)이 필요할 수 있습니다.
+> iOS-only 플로우로 시작하고, 필요 시 웹 플로우(Services ID)로 확장하는 걸 추천합니다.
+
+### 3) Android 설정 (Google)
+- Firebase Android App 설정에 **SHA-1 / SHA-256** 지문 추가(디버그/릴리즈 모두)
+- `google-services.json`이 현재 `applicationId`와 일치하는지 확인(변경했으면 재다운로드/재생성)
+
+### 4) 앱 코드 반영
+- 로그인 화면에 **Google / Apple 버튼**이 추가되어 있습니다.
+- 성공 시 `users.upsertOnAuth(...)` + `users.updateProfile(nickname/photoUrl)`로 Firestore 프로필을 동기화합니다.
+
+---
+
 ## 🍎 macOS에서 Firebase 로그인까지 동작시키기
 
 현재 앱은 macOS에서도 `Firebase.initializeApp()`을 시도하지만,

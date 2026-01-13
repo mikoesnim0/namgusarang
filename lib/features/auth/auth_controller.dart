@@ -4,7 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'auth_providers.dart';
+import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, void>(AuthController.new);
@@ -131,6 +131,49 @@ class AuthController extends AsyncNotifier<void> {
         uid: user.uid,
         nickname: result.kakaoNickname,
         photoUrl: result.kakaoPhotoURL,
+      );
+    });
+  }
+
+  Future<void> signInWithGoogle() async {
+    await _run('login/google', () async {
+      _ensureFirebaseReady();
+      final auth = ref.read(firebaseAuthRepositoryProvider);
+      final google = ref.read(googleAuthRepositoryProvider);
+      final users = ref.read(usersRepositoryProvider);
+
+      final credential = await google.getFirebaseCredential();
+      final cred = await auth.signInWithCredential(credential);
+      final user = cred.user;
+      if (user == null) throw StateError('FirebaseAuth returned null user');
+
+      await users.upsertOnAuth(user: user, email: user.email);
+      await users.updateProfile(
+        uid: user.uid,
+        nickname: user.displayName,
+        photoUrl: user.photoURL,
+      );
+    });
+  }
+
+  Future<void> signInWithApple() async {
+    await _run('login/apple', () async {
+      _ensureFirebaseReady();
+      final auth = ref.read(firebaseAuthRepositoryProvider);
+      final apple = ref.read(appleAuthRepositoryProvider);
+      final users = ref.read(usersRepositoryProvider);
+
+      final credential = await apple.getFirebaseCredential();
+      final cred = await auth.signInWithCredential(credential);
+      final user = cred.user;
+      if (user == null) throw StateError('FirebaseAuth returned null user');
+
+      // Apple email can be null after the first consent; keep upsert tolerant.
+      await users.upsertOnAuth(user: user, email: user.email);
+      await users.updateProfile(
+        uid: user.uid,
+        nickname: user.displayName,
+        photoUrl: user.photoURL,
       );
     });
   }

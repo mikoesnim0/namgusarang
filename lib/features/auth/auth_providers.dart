@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_auth_repository.dart';
 import 'firestore_users_repository.dart';
 import 'kakao_auth_repository.dart';
+import 'google_auth_repository.dart';
+import 'apple_auth_repository.dart';
 
 final firebaseAuthRepositoryProvider = Provider<FirebaseAuthRepository>((ref) {
   return FirebaseAuthRepository();
@@ -12,6 +14,14 @@ final firebaseAuthRepositoryProvider = Provider<FirebaseAuthRepository>((ref) {
 
 final kakaoAuthRepositoryProvider = Provider<KakaoAuthRepository>((ref) {
   return KakaoAuthRepository();
+});
+
+final googleAuthRepositoryProvider = Provider<GoogleAuthRepository>((ref) {
+  return GoogleAuthRepository();
+});
+
+final appleAuthRepositoryProvider = Provider<AppleAuthRepository>((ref) {
+  return AppleAuthRepository();
 });
 
 final usersRepositoryProvider = Provider<FirestoreUsersRepository>((ref) {
@@ -34,4 +44,3 @@ final currentUserDocProvider = StreamProvider<Map<String, dynamic>?>((ref) {
       .snapshots()
       .map((s) => s.data());
 });
-

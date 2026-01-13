@@ -49,6 +49,11 @@ dependencies:
   firebase_messaging: ^15.1.6
   cloud_functions: ^5.3.4
   kakao_flutter_sdk_user: ^1.9.7
+
+  # Social auth
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
   
   # Utils
   intl: ^0.19.0
