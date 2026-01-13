@@ -1,12 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../theme/app_theme.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_typography.dart';
-import '../../theme/app_spacing.dart';
-import '../../widgets/widgets.dart';
+
 import '../../features/auth/auth_controller.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_typography.dart';
+import '../../widgets/widgets.dart';
 
 /// 로그인 화면
 class LoginScreen extends ConsumerStatefulWidget {
@@ -59,17 +62,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _passwordController.clear();
           context.go('/home');
         },
-        error: (e, _) {
+        error: (e, st) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(friendlyAuthError(e))),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(friendlyAuthError(e)),
+            action: kDebugMode
+                ? SnackBarAction(
+                    label: 'DETAILS',
+                    onPressed: () async {
+                      final details = debugAuthErrorDetails(e, st);
+                      await showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Auth error details'),
+                          content: SingleChildScrollView(
+                            child: SelectableText(details),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: details),
+                                );
+                                if (!context.mounted) return;
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text('Copy & Close'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : null,
+          ));
         },
       );
     });
 
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
+    const kakaoKey =
+        String.fromEnvironment('KAKAO_NATIVE_APP_KEY', defaultValue: '');
+    final isKakaoSupported =
+        (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) &&
+            kakaoKey.isNotEmpty;
 
     return Scaffold(
       body: SafeArea(
@@ -81,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: AppSpacing.paddingXXL),
-                
+
                 // 로고 & 타이틀
                 Center(
                   child: Column(
@@ -191,12 +232,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // 카카오 로그인
                 AppButton(
                   text: '카카오로 로그인',
-                  onPressed: _handleKakaoLogin,
+                  onPressed: isKakaoSupported ? _handleKakaoLogin : null,
                   variant: ButtonVariant.secondary,
                   isLoading: isLoading,
                   isFullWidth: true,
                   icon: const Icon(Icons.chat_bubble, size: 20),
                 ),
+                if (!isKakaoSupported) ...[
+                  const SizedBox(height: AppSpacing.paddingSM),
+                  Text(
+                    defaultTargetPlatform == TargetPlatform.macOS
+                        ? 'macOS에서는 카카오 로그인이 지원되지 않습니다. (Android/iOS에서 테스트해주세요)'
+                        : '카카오 키가 설정되지 않았습니다. `--dart-define=KAKAO_NATIVE_APP_KEY=...`로 실행해주세요.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
 
                 const SizedBox(height: AppSpacing.paddingXL),
 
@@ -224,4 +277,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-

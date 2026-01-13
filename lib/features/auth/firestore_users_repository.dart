@@ -54,6 +54,22 @@ class FirestoreUsersRepository {
     await ref.set(update, SetOptions(merge: true));
   }
 
+  /// Best-effort uniqueness check (NOT race-free).
+  /// For strict uniqueness, enforce via a server-side transaction (e.g. nickname index collection).
+  Future<bool> isNicknameAvailable(
+    String nickname, {
+    String? ignoreUid,
+  }) async {
+    final q = await _db
+        .collection('users')
+        .where('nickname', isEqualTo: nickname)
+        .limit(1)
+        .get();
+    if (q.docs.isEmpty) return true;
+    if (ignoreUid == null) return false;
+    return q.docs.first.id == ignoreUid;
+  }
+
   static String _generateInviteCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final r = Random.secure();

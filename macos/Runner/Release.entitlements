@@ -6,5 +6,10 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.doyakmin.hangookji.namgu.macos</string>
+		<string>com.doyakmin.hangookji.namgu.macos</string>
+	</array>
 </dict>
 </plist>

@@ -261,6 +261,32 @@ npm run deploy
 배포 후 앱에서 카카오 로그인 버튼을 누르면,
 Callable `authWithKakao`가 실행되고 Firebase Custom Token으로 로그인됩니다.
 
+---
+
+## 🍎 macOS에서 Firebase 로그인까지 동작시키기
+
+현재 앱은 macOS에서도 `Firebase.initializeApp()`을 시도하지만,
+**macOS 프로젝트에 Firebase 설정(plist)이 없으면 로그인 기능이 동작하지 않습니다.**
+
+### 1) `flutterfire configure`로 macOS 설정 동기화(권장)
+
+Firebase 콘솔 UI에서 macOS 앱 추가가 명확히 안 보이는 경우가 있어,
+가장 확실한 방법은 FlutterFire CLI로 **macOS 앱 등록/설정 파일 생성**을 자동화하는 것입니다.
+
+```bash
+cd namgusarang
+flutterfire configure
+```
+
+### 2) `GoogleService-Info.plist` 확인
+- `flutterfire configure`가 완료되면 `macos/Runner/GoogleService-Info.plist`가 생성/갱신되어야 합니다.
+
+### 3) 실행
+```bash
+cd namgusarang
+fvm flutter run -d macos
+```
+
 ## 🎨 디자인 시스템
 
 ### 색상 팔레트

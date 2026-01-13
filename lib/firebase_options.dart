@@ -69,11 +69,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCKsLuCIADn22vOapWhXWVMGmYJFn6RCl4',
-    appId: '1:924303074294:ios:4d44e122d75fd2d2ed1dd7',
+    appId: '1:924303074294:ios:45c7d616c24311b5ed1dd7',
     messagingSenderId: '924303074294',
     projectId: 'hankookji-namgu',
     storageBucket: 'hankookji-namgu.firebasestorage.app',
-    iosBundleId: 'com.doyakmin.hangookji.namgu',
+    iosBundleId: 'com.doyakmin.hangookji.namgu.macos',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

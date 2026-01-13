@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 import '../../features/settings/settings_model.dart';
 import '../../features/settings/settings_provider.dart';
+import 'package:hangookji_namgu/features/auth/auth_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
@@ -56,6 +58,27 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       gender: _gender ?? current.gender,
     );
     await ref.read(settingsControllerProvider.notifier).updateProfile(next);
+
+    // Also sync to Firestore user profile (so signup/profile reflect real user data).
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user != null) {
+      final users = ref.read(usersRepositoryProvider);
+      final nickname = next.nickname.trim();
+      final available = await users.isNicknameAvailable(
+        nickname,
+        ignoreUid: user.uid,
+      );
+      if (!available) {
+        throw const AuthUnavailableException('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.');
+      }
+      await users.updateProfile(
+        uid: user.uid,
+        nickname: nickname,
+        gender: next.gender.name,
+        birthdate: next.ageRange.name,
+      );
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('저장되었습니다')),

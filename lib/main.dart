@@ -44,14 +44,16 @@ Future<void> _initFirebaseIfSupported() async {
   // (지금 프로젝트가 딱 이 케이스: firebase_options.dart의 macos.appId가 ...:ios:... 인 상태)
   if (platform == TargetPlatform.macOS) {
     final macosAppId = DefaultFirebaseOptions.macos.appId;
-    if (macosAppId.contains(':ios:')) {
+    // NOTE:
+    // Firebase Apple App ID는 macOS에서도 ':ios:' 형태로 보일 수 있습니다.
+    // 문자열 패턴만으로 "misconfiguration"을 단정하면 macOS에서 Firebase init 자체를 막게 되므로,
+    // 여기서는 단순 경고만 남기고 실제 성공/실패는 init/auth 결과로 판단합니다.
+    if (macosAppId.isNotEmpty && macosAppId == DefaultFirebaseOptions.ios.appId) {
       debugPrint(
         'Firebase misconfiguration: macOS is using an iOS GOOGLE_APP_ID ($macosAppId). '
-        'Run flutterfire configure with macOS enabled and ensure macOS GOOGLE_APP_ID is ...:macos:...',
+        'This can be OK if you intentionally share the same Firebase app across Apple platforms. '
+        'If macOS auth fails (CONFIGURATION_NOT_FOUND), re-run flutterfire configure and create/select a macOS app.',
       );
-      // Intentionally skip Firebase init on macOS in this misconfigured state to avoid
-      // runtime auth calls failing with CONFIGURATION_NOT_FOUND/internal-error.
-      return;
     }
   }
 

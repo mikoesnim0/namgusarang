@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
-import '../../firebase_options.dart';
 
 /// 스플래시 화면
 /// 앱 시작 시 표시되는 첫 화면
@@ -47,18 +48,44 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // 2초 후 로그인 화면으로 이동 (실제로는 인증 상태 확인 후 분기)
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () async {
       if (mounted) {
-        // TODO: Firebase Auth 연결 후: 로그인 상태면 /home, 아니면 /login
+        // Default: session 유지(=자동 로그인) UX
+        // Dev/QA flags:
+        // - FORCE_LOGIN_SCREEN=true: 로그인 화면만 강제(세션 유지)
+        // - FORCE_SIGNOUT_ON_STARTUP=true: 시작 시 signOut + 로그인 화면 (디버그에서만 권장)
         //
-        // macOS 임시 우회:
-        // 현재 프로젝트는 macOS Firebase가 iOS App ID(...:ios:...)로 구성되어 Auth가 CONFIGURATION_NOT_FOUND로 항상 실패.
-        // 개발 진행을 위해 이 상태에서는 로그인 화면을 스킵하고 홈으로 진입시킨다.
-        final shouldBypassAuthOnMacOS = !kReleaseMode &&
-            defaultTargetPlatform == TargetPlatform.macOS &&
-            DefaultFirebaseOptions.macos.appId.contains(':ios:');
+        // Backward-compat: FORCE_LOGIN_ON_STARTUP=true 는 FORCE_LOGIN_SCREEN과 동일하게 취급.
+        const forceLoginScreen = bool.fromEnvironment(
+          'FORCE_LOGIN_SCREEN',
+          defaultValue: false,
+        );
+        const forceSignOut = bool.fromEnvironment(
+          'FORCE_SIGNOUT_ON_STARTUP',
+          defaultValue: false,
+        );
+        const legacyForceLoginOnStartup = bool.fromEnvironment(
+          'FORCE_LOGIN_ON_STARTUP',
+          defaultValue: false,
+        );
 
-        context.go(shouldBypassAuthOnMacOS ? '/home' : '/login');
+        if ((forceSignOut || forceLoginScreen || legacyForceLoginOnStartup) &&
+            Firebase.apps.isNotEmpty) {
+          if (forceSignOut && kDebugMode) {
+            try {
+              await FirebaseAuth.instance.signOut();
+            } catch (_) {
+              // ignore
+            }
+          }
+          context.go('/login');
+          return;
+        }
+
+        final isFirebaseReady = Firebase.apps.isNotEmpty;
+        final isSignedIn =
+            isFirebaseReady && FirebaseAuth.instance.currentUser != null;
+        context.go(isSignedIn ? '/home' : '/login');
       }
     });
   }

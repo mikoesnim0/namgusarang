@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../theme/app_theme.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_typography.dart';
-import '../../theme/app_spacing.dart';
-import '../../widgets/widgets.dart';
+
 import '../../features/auth/auth_controller.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_typography.dart';
+import '../../widgets/widgets.dart';
 
 /// 회원가입 화면
 class SignupScreen extends ConsumerStatefulWidget {
@@ -24,7 +26,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordConfirmController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _birthdateController = TextEditingController();
-  
+
   String _selectedGender = '';
   bool _termsAgreed = false;
   bool _privacyAgreed = false;
@@ -44,7 +46,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   void initState() {
     super.initState();
-
     // Ensure fresh form state when entering this screen.
     _clearForm();
   }
@@ -126,11 +127,44 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           _clearForm();
           context.go('/home');
         },
-        error: (e, _) {
+        error: (e, st) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(friendlyAuthError(e))),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(friendlyAuthError(e)),
+            action: kDebugMode
+                ? SnackBarAction(
+                    label: 'DETAILS',
+                    onPressed: () async {
+                      final details = debugAuthErrorDetails(e, st);
+                      await showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Auth error details'),
+                          content: SingleChildScrollView(
+                            child: SelectableText(details),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: details),
+                                );
+                                if (!context.mounted) return;
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text('Copy & Close'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : null,
+          ));
         },
       );
     });
@@ -367,4 +401,3 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 }
-
