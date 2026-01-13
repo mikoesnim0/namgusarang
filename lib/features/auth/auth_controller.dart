@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
+import 'auth_debug_log.dart';
 
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, void>(AuthController.new);
@@ -74,6 +75,10 @@ class AuthController extends AsyncNotifier<void> {
       final cred = await auth.signInWithEmail(email: email, password: password);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
+      authDebugLog('login/email firebase ok', {
+        'uid': user.uid,
+        'email': user.email ?? '',
+      });
 
       await users.upsertOnAuth(user: user, email: email);
     });
@@ -103,6 +108,10 @@ class AuthController extends AsyncNotifier<void> {
       final cred = await auth.signUpWithEmail(email: email, password: password);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
+      authDebugLog('signup/email firebase ok', {
+        'uid': user.uid,
+        'email': user.email ?? '',
+      });
 
       await users.upsertOnAuth(user: user, email: email);
       await users.updateProfile(
@@ -125,6 +134,12 @@ class AuthController extends AsyncNotifier<void> {
       final cred = await auth.signInWithCustomToken(result.firebaseToken);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
+      authDebugLog('login/kakao firebase ok', {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'kakaoEmail': result.kakaoEmail ?? '',
+        'kakaoNickname': result.kakaoNickname ?? '',
+      });
 
       await users.upsertOnAuth(user: user, email: result.kakaoEmail ?? user.email);
       await users.updateProfile(
@@ -146,6 +161,11 @@ class AuthController extends AsyncNotifier<void> {
       final cred = await auth.signInWithCredential(credential);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
+      authDebugLog('login/google firebase ok', {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+      });
 
       await users.upsertOnAuth(user: user, email: user.email);
       await users.updateProfile(
@@ -167,6 +187,11 @@ class AuthController extends AsyncNotifier<void> {
       final cred = await auth.signInWithCredential(credential);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
+      authDebugLog('login/apple firebase ok', {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+      });
 
       // Apple email can be null after the first consent; keep upsert tolerant.
       await users.upsertOnAuth(user: user, email: user.email);

@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
 import '../../features/settings/settings_provider.dart';
+import '../../features/auth/auth_providers.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
@@ -19,7 +19,18 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final home = ref.watch(homeControllerProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
-    final nickname = settingsAsync.valueOrNull?.profile.nickname ?? '닉네임';
+    final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final settingsNickname = settingsAsync.valueOrNull?.profile.nickname;
+    final docNickname = (userDoc?['nickname'] as String?)?.trim();
+    final authNickname = authUser?.displayName?.trim();
+    final nickname = (docNickname?.isNotEmpty == true)
+        ? docNickname!
+        : (authNickname?.isNotEmpty == true)
+            ? authNickname!
+            : (settingsNickname?.trim().isNotEmpty == true)
+                ? settingsNickname!.trim()
+                : '닉네임';
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -262,27 +273,6 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary100,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-      ),
-      child: Text(
-        text,
-        style: AppTypography.labelSmall.copyWith(color: AppColors.primary900),
-      ),
-    );
-  }
-}
-
 class _CircleStep extends StatelessWidget {
   const _CircleStep({required this.text, required this.filled});
 
@@ -305,39 +295,6 @@ class _CircleStep extends StatelessWidget {
         style: AppTypography.labelSmall.copyWith(
           color: filled ? AppColors.textOnPrimary : AppColors.textSecondary,
         ),
-      ),
-    );
-  }
-}
-
-class _MissionRow extends StatelessWidget {
-  const _MissionRow({required this.m});
-
-  final MissionItem m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(
-            m.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: m.isCompleted ? AppColors.primary500 : AppColors.textSecondary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              m.title,
-              style: AppTypography.bodyMedium.copyWith(
-                decoration: m.isCompleted ? TextDecoration.lineThrough : null,
-                color:
-                    m.isCompleted ? AppColors.textSecondary : AppColors.textPrimary,
-              ),
-            ),
-          ),
-          _Pill(text: m.badge),
-        ],
       ),
     );
   }

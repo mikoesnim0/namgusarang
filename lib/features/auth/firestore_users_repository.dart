@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'auth_debug_log.dart';
+
 class FirestoreUsersRepository {
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
@@ -13,6 +15,10 @@ class FirestoreUsersRepository {
     required User user,
     required String? email,
   }) async {
+    authDebugLog('users.upsertOnAuth start', {
+      'uid': user.uid,
+      'email': (email ?? user.email) ?? '',
+    });
     final ref = _userRef(user.uid);
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
@@ -36,6 +42,20 @@ class FirestoreUsersRepository {
         }, SetOptions(merge: true));
       }
     });
+    try {
+      final snap = await ref.get();
+      authDebugLog('users.upsertOnAuth done', {
+        'uid': user.uid,
+        'docExists': snap.exists,
+        'nickname': (snap.data()?['nickname'] ?? '').toString(),
+        'email': (snap.data()?['email'] ?? '').toString(),
+      });
+    } catch (e) {
+      authDebugLog('users.upsertOnAuth done (readback failed)', {
+        'uid': user.uid,
+        'error': e.toString(),
+      });
+    }
   }
 
   Future<void> updateProfile({
@@ -46,6 +66,14 @@ class FirestoreUsersRepository {
     String? ageRange,
     String? gender,
   }) async {
+    authDebugLog('users.updateProfile start', {
+      'uid': uid,
+      if (nickname != null) 'nickname': nickname,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+      if (birthdate != null) 'birthdate': birthdate,
+      if (ageRange != null) 'ageRange': ageRange,
+      if (gender != null) 'gender': gender,
+    });
     final ref = _userRef(uid);
     final update = <String, dynamic>{};
     if (nickname != null) update['nickname'] = nickname;
@@ -56,6 +84,7 @@ class FirestoreUsersRepository {
 
     if (update.isEmpty) return;
     await ref.set(update, SetOptions(merge: true));
+    authDebugLog('users.updateProfile done', {'uid': uid});
   }
 
   /// Best-effort uniqueness check (NOT race-free).
