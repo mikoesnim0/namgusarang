@@ -12,7 +12,20 @@
           "package_name": "com.doyakmin.hangookji.namgu"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "924303074294-egrjc641ji0onu6odn884v0o6tpbdvth.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doyakmin.hangookji.namgu",
+            "certificate_hash": "294a9e3e6b8d43abc10b7fc275fc31613a47cbeb"
+          }
+        },
+        {
+          "client_id": "924303074294-18p27p5j8mjl8omgncuii4trsjfdohu9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDPlVSROzgCZWdY-LCYmYHXdxriQnkFqkI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "924303074294-18p27p5j8mjl8omgncuii4trsjfdohu9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "924303074294-4o6j7m3ki76sds3ro786143q2vnfk470.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doyakmin.hangookji.namgu"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +56,12 @@
           "package_name": "com.doyakmin.hankookji.namgu"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "924303074294-18p27p5j8mjl8omgncuii4trsjfdohu9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDPlVSROzgCZWdY-LCYmYHXdxriQnkFqkI"
@@ -39,7 +69,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "924303074294-18p27p5j8mjl8omgncuii4trsjfdohu9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "924303074294-4o6j7m3ki76sds3ro786143q2vnfk470.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.doyakmin.hangookji.namgu"
+              }
+            }
+          ]
         }
       }
     }

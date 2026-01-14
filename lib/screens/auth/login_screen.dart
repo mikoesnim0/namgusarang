@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../features/auth/auth_controller.dart';
 import '../../theme/app_colors.dart';
@@ -254,25 +256,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: AppSpacing.paddingMD),
 
                 // Google 로그인
-                AppButton(
-                  text: 'Google로 로그인',
-                  onPressed: isGoogleSupported ? _handleGoogleLogin : null,
-                  variant: ButtonVariant.secondary,
-                  isLoading: isLoading,
-                  isFullWidth: true,
-                  icon: const Icon(Icons.g_mobiledata, size: 24),
+                SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed:
+                        (isGoogleSupported && !isLoading)
+                            ? () {
+                                _handleGoogleLogin();
+                              }
+                            : null,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.gray200),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/icons/google_g.svg',
+                          width: 18,
+                          height: 18,
+                        ),
+                        const SizedBox(width: AppSpacing.paddingSM),
+                        Text(
+                          'Google로 계속하기',
+                          style: AppTypography.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: AppSpacing.paddingMD),
 
                 // Apple 로그인
-                AppButton(
-                  text: 'Apple로 로그인',
-                  onPressed: isAppleSupported ? _handleAppleLogin : null,
-                  variant: ButtonVariant.secondary,
-                  isLoading: isLoading,
-                  isFullWidth: true,
-                  icon: const Icon(Icons.apple, size: 20),
+                SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: Opacity(
+                    opacity: (isAppleSupported && !isLoading) ? 1 : 0.5,
+                    child: SignInWithAppleButton(
+                      onPressed: () {
+                        if (!isAppleSupported || isLoading) return;
+                        _handleAppleLogin();
+                      },
+                      style: SignInWithAppleButtonStyle.black,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                      text: 'Apple로 계속하기',
+                    ),
+                  ),
                 ),
                 if (!isKakaoSupported) ...[
                   const SizedBox(height: AppSpacing.paddingSM),

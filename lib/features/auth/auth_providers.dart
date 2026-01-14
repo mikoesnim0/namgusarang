@@ -44,3 +44,4 @@ final currentUserDocProvider = StreamProvider<Map<String, dynamic>?>((ref) {
       .snapshots()
       .map((s) => s.data());
 });
+
