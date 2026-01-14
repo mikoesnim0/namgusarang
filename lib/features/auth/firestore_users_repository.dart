@@ -11,6 +11,86 @@ class FirestoreUsersRepository {
   DocumentReference<Map<String, dynamic>> _userRef(String uid) =>
       _db.collection('users').doc(uid);
 
+  /// Creates/updates `users/{uid}` on auth, but does NOT overwrite user-chosen fields
+  /// (e.g. nickname) once they exist.
+  Future<void> ensureProfileOnAuth({
+    required User user,
+    String? email,
+    String? nickname,
+    String? photoUrl,
+  }) async {
+    authDebugLog('users.ensureProfileOnAuth start', {
+      'uid': user.uid,
+      'email': (email ?? user.email) ?? '',
+      if (nickname != null) 'nickname': nickname,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    });
+
+    final ref = _userRef(user.uid);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data();
+
+      String? existingNickname = (data?['nickname'] as String?)?.trim();
+      String? existingEmail = (data?['email'] as String?)?.trim();
+      String? existingPhotoUrl = (data?['photoUrl'] as String?)?.trim();
+
+      final now = FieldValue.serverTimestamp();
+      final candidateEmail = (email ?? user.email)?.trim();
+      final candidateNickname = nickname?.trim();
+      final candidatePhotoUrl = photoUrl?.trim();
+
+      final update = <String, dynamic>{
+        'uid': user.uid,
+        'lastLogin': now,
+      };
+
+      if (!snap.exists) {
+        update.addAll({
+          'createdAt': now,
+          'totalSteps': 0,
+          'todaySteps': 0,
+          'friendInviteCode': _generateInviteCode(),
+        });
+      }
+
+      if ((existingEmail == null || existingEmail.isEmpty) &&
+          candidateEmail != null &&
+          candidateEmail.isNotEmpty) {
+        update['email'] = candidateEmail;
+      }
+
+      if ((existingNickname == null || existingNickname.isEmpty) &&
+          candidateNickname != null &&
+          candidateNickname.isNotEmpty) {
+        update['nickname'] = candidateNickname;
+      }
+
+      if ((existingPhotoUrl == null || existingPhotoUrl.isEmpty) &&
+          candidatePhotoUrl != null &&
+          candidatePhotoUrl.isNotEmpty) {
+        update['photoUrl'] = candidatePhotoUrl;
+      }
+
+      tx.set(ref, update, SetOptions(merge: true));
+    });
+
+    try {
+      final snap = await ref.get();
+      authDebugLog('users.ensureProfileOnAuth done', {
+        'uid': user.uid,
+        'docExists': snap.exists,
+        'nickname': (snap.data()?['nickname'] ?? '').toString(),
+        'email': (snap.data()?['email'] ?? '').toString(),
+      });
+    } catch (e) {
+      authDebugLog('users.ensureProfileOnAuth done (readback failed)', {
+        'uid': user.uid,
+        'error': e.toString(),
+      });
+    }
+  }
+
   Future<void> upsertOnAuth({
     required User user,
     required String? email,
@@ -76,8 +156,14 @@ class FirestoreUsersRepository {
     });
     final ref = _userRef(uid);
     final update = <String, dynamic>{};
-    if (nickname != null) update['nickname'] = nickname;
-    if (photoUrl != null) update['photoUrl'] = photoUrl;
+    final trimmedNickname = nickname?.trim();
+    final trimmedPhotoUrl = photoUrl?.trim();
+    if (trimmedNickname != null && trimmedNickname.isNotEmpty) {
+      update['nickname'] = trimmedNickname;
+    }
+    if (trimmedPhotoUrl != null && trimmedPhotoUrl.isNotEmpty) {
+      update['photoUrl'] = trimmedPhotoUrl;
+    }
     if (birthdate != null) update['birthdate'] = birthdate;
     if (ageRange != null) update['ageRange'] = ageRange;
     if (gender != null) update['gender'] = gender;

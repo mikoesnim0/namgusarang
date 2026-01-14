@@ -50,7 +50,10 @@ class SettingsScreen extends ConsumerWidget {
 
         return ListTile(
           contentPadding: EdgeInsets.zero,
-          leading: const CircleAvatar(child: Icon(Icons.person)),
+          leading: const CircleAvatar(
+            backgroundColor: AppColors.primary100,
+            child: Icon(Icons.person, color: AppColors.primary700),
+          ),
           title: Text(nickname, style: AppTypography.bodyLarge),
           subtitle: Text(email, style: AppTypography.bodySmall),
           trailing: const Icon(Icons.chevron_right),
@@ -78,11 +81,13 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _SettingsTile(
+                    icon: Icons.assignment_ind_outlined,
                     title: '프로필',
                     onTap: () => context.push('/settings/profile'),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
+                    icon: Icons.notifications_outlined,
                     title: '알림',
                     onTap: () => context.push('/settings/notifications'),
                   ),
@@ -97,6 +102,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _SettingsTile(
+                    icon: Icons.description_outlined,
                     title: '서비스 이용 약관',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,6 +112,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
+                    icon: Icons.privacy_tip_outlined,
                     title: '개인정보 처리 방침',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,6 +122,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
+                    icon: Icons.support_agent_outlined,
                     title: '문의 하기',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,6 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
+                    icon: Icons.person_remove_outlined,
                     title: '탈퇴 하기',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,8 +199,13 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({required this.title, required this.onTap});
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
 
+  final IconData icon;
   final String title;
   final VoidCallback onTap;
 
@@ -199,6 +213,7 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
       title: Text(title, style: AppTypography.bodyLarge),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,

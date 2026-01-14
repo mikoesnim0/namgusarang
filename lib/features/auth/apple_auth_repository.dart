@@ -6,9 +6,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+class AppleSignInResult {
+  AppleSignInResult({
+    required this.credential,
+    this.email,
+    this.fullName,
+  });
+
+  final AuthCredential credential;
+  final String? email;
+  final String? fullName;
+}
+
 class AppleAuthRepository {
-  /// Returns a Firebase AuthCredential for Apple sign-in.
-  Future<AuthCredential> getFirebaseCredential() async {
+  /// Performs Apple sign-in and returns a Firebase credential + best-effort profile fields.
+  ///
+  /// Note: Apple only returns email/fullName on the *first* consent for this app.
+  Future<AppleSignInResult> signIn() async {
     if (kIsWeb) {
       throw UnsupportedError('Apple login is not implemented for web in this app.');
     }
@@ -33,11 +47,24 @@ class AppleAuthRepository {
       throw StateError('Apple sign-in failed: identityToken missing.');
     }
 
-    return OAuthProvider('apple.com').credential(
+    final credential = OAuthProvider('apple.com').credential(
       idToken: idToken,
       rawNonce: rawNonce,
       // authorizationCode isn't always required, but pass when available.
       accessToken: appleIDCredential.authorizationCode,
+    );
+
+    final givenName = appleIDCredential.givenName?.trim();
+    final familyName = appleIDCredential.familyName?.trim();
+    final fullName = [
+      if (familyName != null && familyName.isNotEmpty) familyName,
+      if (givenName != null && givenName.isNotEmpty) givenName,
+    ].join(' ').trim();
+
+    return AppleSignInResult(
+      credential: credential,
+      email: appleIDCredential.email?.trim(),
+      fullName: fullName.isEmpty ? null : fullName,
     );
   }
 }

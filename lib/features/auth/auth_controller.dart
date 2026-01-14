@@ -167,9 +167,9 @@ class AuthController extends AsyncNotifier<void> {
         'displayName': user.displayName ?? '',
       });
 
-      await users.upsertOnAuth(user: user, email: user.email);
-      await users.updateProfile(
-        uid: user.uid,
+      await users.ensureProfileOnAuth(
+        user: user,
+        email: user.email,
         nickname: user.displayName,
         photoUrl: user.photoURL,
       );
@@ -183,21 +183,28 @@ class AuthController extends AsyncNotifier<void> {
       final apple = ref.read(appleAuthRepositoryProvider);
       final users = ref.read(usersRepositoryProvider);
 
-      final credential = await apple.getFirebaseCredential();
-      final cred = await auth.signInWithCredential(credential);
+      final result = await apple.signIn();
+      final cred = await auth.signInWithCredential(result.credential);
       final user = cred.user;
       if (user == null) throw StateError('FirebaseAuth returned null user');
       authDebugLog('login/apple firebase ok', {
         'uid': user.uid,
-        'email': user.email ?? '',
+        'email': (result.email ?? user.email) ?? '',
+        'appleFullName': result.fullName ?? '',
         'displayName': user.displayName ?? '',
       });
 
+      final candidateNickname = (result.fullName?.trim().isNotEmpty == true)
+          ? result.fullName!.trim()
+          : (user.displayName?.trim().isNotEmpty == true)
+              ? user.displayName!.trim()
+              : null;
+
       // Apple email can be null after the first consent; keep upsert tolerant.
-      await users.upsertOnAuth(user: user, email: user.email);
-      await users.updateProfile(
-        uid: user.uid,
-        nickname: user.displayName,
+      await users.ensureProfileOnAuth(
+        user: user,
+        email: result.email ?? user.email,
+        nickname: candidateNickname,
         photoUrl: user.photoURL,
       );
     });

@@ -281,6 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'assets/icons/google_g.svg',
                           width: 18,
                           height: 18,
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(width: AppSpacing.paddingSM),
                         Text(
