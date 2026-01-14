@@ -303,7 +303,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   placeholder: '사용할 닉네임',
                   controller: _nicknameController,
                   textInputAction: TextInputAction.next,
-                  hint: '중복되지 않는 닉네임을 입력하세요',
+                  hint: '2~12자 한글/영문/숫자 닉네임을 설정하세요',
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return '닉네임을 입력해주세요';
