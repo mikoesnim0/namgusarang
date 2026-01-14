@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../features/friends/friends_provider.dart';
@@ -24,6 +25,17 @@ class FriendsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('친구'),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            onTap: () => context.push('/my'),
+            child: const CircleAvatar(
+              backgroundColor: AppColors.gray200,
+              child: Icon(Icons.person, color: AppColors.textSecondary),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             tooltip: '친구 추가',

@@ -72,31 +72,27 @@ final appRouter = GoRouter(
             ),
           ],
         ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/my',
-              builder: (context, state) => const SettingsScreen(),
-              routes: [
-                GoRoute(
-                  path: 'info',
-                  builder: (context, state) => const PersonalInfoScreen(),
-                ),
-                GoRoute(
-                  path: 'profile',
-                  builder: (context, state) => const ProfileSettingsScreen(),
-                ),
-                GoRoute(
-                  path: 'notifications',
-                  builder: (context, state) => const NotificationSettingsScreen(),
-                ),
-                GoRoute(
-                  path: 'connect',
-                  builder: (context, state) => const ConnectProgramScreen(),
-                ),
-              ],
-            ),
-          ],
+      ],
+    ),
+    GoRoute(
+      path: '/my',
+      builder: (context, state) => const SettingsScreen(),
+      routes: [
+        GoRoute(
+          path: 'info',
+          builder: (context, state) => const PersonalInfoScreen(),
+        ),
+        GoRoute(
+          path: 'profile',
+          builder: (context, state) => const ProfileSettingsScreen(),
+        ),
+        GoRoute(
+          path: 'notifications',
+          builder: (context, state) => const NotificationSettingsScreen(),
+        ),
+        GoRoute(
+          path: 'connect',
+          builder: (context, state) => const ConnectProgramScreen(),
         ),
       ],
     ),

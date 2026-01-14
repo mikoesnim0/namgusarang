@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../features/coupons/coupon_model.dart';
 import '../../features/coupons/coupons_provider.dart';
@@ -20,7 +21,20 @@ class CouponsScreen extends ConsumerWidget {
     final sort = ref.watch(couponSortProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('쿠폰')),
+      appBar: AppBar(
+        title: const Text('쿠폰함'),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            onTap: () => context.push('/my'),
+            child: const CircleAvatar(
+              backgroundColor: AppColors.gray200,
+              child: Icon(Icons.person, color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -96,7 +110,7 @@ class CouponsScreen extends ConsumerWidget {
           const Divider(height: 1),
           Expanded(
             child: ListView.separated(
-              padding: AppTheme.screenPadding,
+              padding: AppTheme.screenPadding.copyWith(bottom: 120),
               itemCount: coupons.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, idx) {

@@ -5,7 +5,7 @@ import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
 /// Custom bottom navigation that matches the Figma style:
-/// - 4 tabs: Home / Coupons (center raised) / Friends / My
+/// - 3 tabs: Home / Coupons (center raised) / Friends
 /// - Center "Coupons" button floats above the bar.
 ///
 /// Keep this widget self-contained so contractors can tweak nav visuals
@@ -39,12 +39,6 @@ class AppBottomNav extends StatelessWidget {
       label: '친구목록',
       icon: Icons.group_outlined,
       activeIcon: Icons.group,
-    ),
-    _NavItem(
-      index: 3,
-      label: '마이',
-      icon: Icons.person_outline,
-      activeIcon: Icons.person,
     ),
   ];
 
