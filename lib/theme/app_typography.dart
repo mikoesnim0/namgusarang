@@ -5,6 +5,7 @@ import 'app_colors.dart';
 class AppTypography {
   AppTypography._();
 
+  static const String _fontFamily = 'Pretendard';
   static const List<String> _fontFallback = [
     // Android often has Noto Sans KR, macOS has Apple SD Gothic Neo
     'Noto Sans KR',
@@ -24,6 +25,7 @@ class AppTypography {
         fontWeight: FontWeight.bold,
         height: 1.2,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -32,6 +34,7 @@ class AppTypography {
         fontWeight: FontWeight.bold,
         height: 1.3,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -40,6 +43,7 @@ class AppTypography {
         fontWeight: FontWeight.bold,
         height: 1.4,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -48,6 +52,7 @@ class AppTypography {
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -56,6 +61,7 @@ class AppTypography {
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -65,6 +71,7 @@ class AppTypography {
         fontWeight: FontWeight.normal,
         height: 1.5,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -73,6 +80,7 @@ class AppTypography {
         fontWeight: FontWeight.normal,
         height: 1.5,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -81,6 +89,7 @@ class AppTypography {
         fontWeight: FontWeight.normal,
         height: 1.5,
         color: AppColors.textSecondary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -90,6 +99,7 @@ class AppTypography {
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -98,6 +108,7 @@ class AppTypography {
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: AppColors.textPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -106,6 +117,7 @@ class AppTypography {
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: AppColors.textSecondary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -116,6 +128,7 @@ class AppTypography {
         height: 1.2,
         letterSpacing: 0.5,
         color: AppColors.textOnPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -125,6 +138,7 @@ class AppTypography {
         height: 1.2,
         letterSpacing: 0.5,
         color: AppColors.textOnPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -134,6 +148,7 @@ class AppTypography {
         height: 1.2,
         letterSpacing: 0.5,
         color: AppColors.textOnPrimary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -143,6 +158,7 @@ class AppTypography {
         fontWeight: FontWeight.normal,
         height: 1.4,
         color: AppColors.textSecondary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 
@@ -152,7 +168,7 @@ class AppTypography {
         height: 1.4,
         letterSpacing: 1.0,
         color: AppColors.textSecondary,
+        fontFamily: _fontFamily,
         fontFamilyFallback: _fontFallback,
       );
 }
-
