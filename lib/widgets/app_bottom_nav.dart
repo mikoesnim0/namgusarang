@@ -56,7 +56,7 @@ class AppBottomNav extends StatelessWidget {
               top: 16,
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.gray50,
                   border: Border(
                     top: BorderSide(color: AppColors.border),
                   ),
@@ -172,8 +172,7 @@ class _CenterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = isActive ? AppColors.primary500 : AppColors.gray500;
     final bg = isActive ? AppColors.primary500 : AppColors.surface;
-    final fg = isActive ? AppColors.textOnPrimary : AppColors.primary500;
-    final shadow = AppColors.shadowMedium;
+    final fg = isActive ? AppColors.textOnPrimary : AppColors.gray500;
 
     return Material(
       color: Colors.transparent,
@@ -188,15 +187,8 @@ class _CenterButton extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.surface,
+                color: AppColors.gray50,
                 border: Border.all(color: accent, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: shadow,
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
             ),
             Container(

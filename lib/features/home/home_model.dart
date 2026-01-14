@@ -55,6 +55,7 @@ class HomeState {
     required this.cycle,
     required this.missions,
     required this.milestones,
+    required this.completedMilestones,
   });
 
   final int todaySteps;
@@ -62,6 +63,7 @@ class HomeState {
   final MissionCycle cycle;
   final List<MissionItem> missions; // 3~5 items
   final List<int> milestones; // e.g. 1..10 day/mission checkpoints
+  final List<int> completedMilestones; // 성공한 날
 
   double get progress {
     if (mission.goalSteps <= 0) return 0;
@@ -82,6 +84,7 @@ class HomeState {
     MissionCycle? cycle,
     List<MissionItem>? missions,
     List<int>? milestones,
+    List<int>? completedMilestones,
   }) {
     return HomeState(
       todaySteps: todaySteps ?? this.todaySteps,
@@ -89,6 +92,7 @@ class HomeState {
       cycle: cycle ?? this.cycle,
       missions: missions ?? this.missions,
       milestones: milestones ?? this.milestones,
+      completedMilestones: completedMilestones ?? this.completedMilestones,
     );
   }
 
@@ -96,6 +100,7 @@ class HomeState {
     const stepMission = StepMission(title: '오늘 5,000보 걷기', goalSteps: 5000);
     const cycle = MissionCycle(roundTitle: '2회차', daysLeft: 4);
     const milestones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const completedMilestones = [1, 3, 5, 10];
 
     // 초기 더미: 오늘 걸음수 기반으로 완료 여부가 바뀌는 항목 1개 + 고정 더미 3개
     const todaySteps = 2866;
@@ -134,7 +139,7 @@ class HomeState {
       cycle: cycle,
       missions: missions,
       milestones: milestones,
+      completedMilestones: completedMilestones,
     );
   }
 }
-
