@@ -86,6 +86,20 @@ class AppBottomNav extends StatelessWidget {
               ),
             ),
 
+            // Raised base behind center button (matches bar color)
+            Positioned(
+              top: 6,
+              child: Container(
+                width: 120,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(32),
+                ),
+              ),
+            ),
+
             // Floating center button
             Positioned(
               top: 0,

@@ -63,7 +63,19 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('마이')),
+      appBar: AppBar(
+        title: const Text('마이'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
       body: SingleChildScrollView(
         padding: AppTheme.screenPadding,
         child: Column(
@@ -220,4 +232,3 @@ class _SettingsTile extends StatelessWidget {
     );
   }
 }
-
