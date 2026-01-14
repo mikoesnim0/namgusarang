@@ -107,7 +107,7 @@ class FriendsScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: '초대 링크 공유',
+                        text: '초대링크 공유',
                         variant: ButtonVariant.primary,
                         isFullWidth: true,
                         onPressed: () async {
@@ -363,4 +363,3 @@ String _comma(int n) {
   }
   return buf.toString();
 }
-

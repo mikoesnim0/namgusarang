@@ -128,7 +128,9 @@ class _NavTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: AppTypography.labelSmall.copyWith(color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.labelMedium.copyWith(color: color),
             ),
           ],
         ),
@@ -150,21 +152,21 @@ class _CenterLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? AppColors.primary500 : AppColors.gray500;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 9, bottom: 7),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const SizedBox(height: 26), // reserve icon space (floating button)
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(color: color),
-            ),
-          ],
+    return Semantics(
+      selected: isActive,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 9, bottom: 7),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              const SizedBox(height: 26), // reserve icon space (floating button)
+              const SizedBox(height: 4),
+              const SizedBox(height: 16), // reserve label height
+            ],
+          ),
         ),
       ),
     );
@@ -189,8 +191,8 @@ class _CenterButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Container(
-          width: 56,
-          height: 56,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
             color: bg,
             shape: BoxShape.circle,
@@ -206,10 +208,20 @@ class _CenterButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(
-            Icons.confirmation_number,
-            color: fg,
-            size: AppSpacing.iconSizeLG,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.confirmation_number,
+                color: fg,
+                size: 22,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '쿠폰함',
+                style: AppTypography.labelMedium.copyWith(color: fg),
+              ),
+            ],
           ),
         ),
       ),
