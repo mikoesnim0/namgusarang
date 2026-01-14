@@ -1,33 +1,37 @@
 import 'package:flutter/material.dart';
 
-/// 남구이야기 앱의 컬러 팔레트
-/// PRD 기반: 초록색 메인, 심플하고 귀여운 느낌
+/// Walker홀릭 앱의 컬러 팔레트
+/// Brand (from Figma): Teal (#10C4AE) + Sky (#69C2FF) with clean whites.
 class AppColors {
   AppColors._();
 
-  // Primary Colors (초록색 기반)
-  static const Color primary50 = Color(0xFFE8F5E9);
-  static const Color primary100 = Color(0xFFC8E6C9);
-  static const Color primary200 = Color(0xFFA5D6A7);
-  static const Color primary300 = Color(0xFF81C784);
-  static const Color primary400 = Color(0xFF66BB6A);
-  static const Color primary500 = Color(0xFF4CAF50); // 메인 초록
-  static const Color primary600 = Color(0xFF43A047);
-  static const Color primary700 = Color(0xFF388E3C);
-  static const Color primary800 = Color(0xFF2E7D32);
-  static const Color primary900 = Color(0xFF1B5E20);
+  // Brand
+  static const Color brandTeal = Color(0xFF10C4AE);
+  static const Color brandSky = Color(0xFF69C2FF);
 
-  // Secondary Colors (보조 색상)
-  static const Color secondary50 = Color(0xFFFFF8E1);
-  static const Color secondary100 = Color(0xFFFFECB3);
-  static const Color secondary200 = Color(0xFFFFE082);
-  static const Color secondary300 = Color(0xFFFFD54F);
-  static const Color secondary400 = Color(0xFFFFCA28);
-  static const Color secondary500 = Color(0xFFFFC107); // 메인 노란색
-  static const Color secondary600 = Color(0xFFFFB300);
-  static const Color secondary700 = Color(0xFFFFA000);
-  static const Color secondary800 = Color(0xFFFF8F00);
-  static const Color secondary900 = Color(0xFFFF6F00);
+  // Primary Colors (teal scale)
+  static const Color primary50 = Color(0xFFE6FAF7);
+  static const Color primary100 = Color(0xFFC7F2EC);
+  static const Color primary200 = Color(0xFF9BE6DD);
+  static const Color primary300 = Color(0xFF63D6CB);
+  static const Color primary400 = Color(0xFF2CCCBD);
+  static const Color primary500 = brandTeal; // 메인
+  static const Color primary600 = Color(0xFF0FAF9C);
+  static const Color primary700 = Color(0xFF0B8B7B);
+  static const Color primary800 = Color(0xFF07685B);
+  static const Color primary900 = Color(0xFF054E44);
+
+  // Secondary Colors (sky scale)
+  static const Color secondary50 = Color(0xFFEAF7FF);
+  static const Color secondary100 = Color(0xFFD3EFFF);
+  static const Color secondary200 = Color(0xFFB1E3FF);
+  static const Color secondary300 = Color(0xFF86D4FF);
+  static const Color secondary400 = Color(0xFF5FC9FF);
+  static const Color secondary500 = brandSky;
+  static const Color secondary600 = Color(0xFF4AAEE6);
+  static const Color secondary700 = Color(0xFF388BC0);
+  static const Color secondary800 = Color(0xFF296999);
+  static const Color secondary900 = Color(0xFF1E5278);
 
   // Accent Colors (강조 색상)
   static const Color accentBlue = Color(0xFF2196F3);
@@ -53,9 +57,9 @@ class AppColors {
   static const Color gray900 = Color(0xFF212121);
 
   // Background & Surface
-  static const Color background = Color(0xFFFFFFFF);
+  static const Color background = Color(0xFFFDFEFE);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF5F5F5);
+  static const Color surfaceVariant = Color(0xFFF3F8F9);
 
   // Text Colors
   static const Color textPrimary = Color(0xFF212121);

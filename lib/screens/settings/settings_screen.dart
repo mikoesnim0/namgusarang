@@ -57,13 +57,13 @@ class SettingsScreen extends ConsumerWidget {
           title: Text(nickname, style: AppTypography.bodyLarge),
           subtitle: Text(email, style: AppTypography.bodySmall),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/settings/profile'),
+          onTap: () => context.push('/my/profile'),
         );
       },
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('설정')),
+      appBar: AppBar(title: const Text('마이')),
       body: SingleChildScrollView(
         padding: AppTheme.screenPadding,
         child: Column(
@@ -83,13 +83,13 @@ class SettingsScreen extends ConsumerWidget {
                   _SettingsTile(
                     icon: Icons.assignment_ind_outlined,
                     title: '프로필',
-                    onTap: () => context.push('/settings/profile'),
+                    onTap: () => context.push('/my/profile'),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
                     icon: Icons.notifications_outlined,
                     title: '알림',
-                    onTap: () => context.push('/settings/notifications'),
+                    onTap: () => context.push('/my/notifications'),
                   ),
                 ],
               ),

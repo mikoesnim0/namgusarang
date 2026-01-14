@@ -26,6 +26,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordConfirmController = TextEditingController();
   final _nicknameController = TextEditingController();
   final _birthdateController = TextEditingController();
+  int? _selectedBirthYear;
 
   String _selectedGender = '';
   bool _termsAgreed = false;
@@ -38,6 +39,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _passwordConfirmController.clear();
     _nicknameController.clear();
     _birthdateController.clear();
+    _selectedBirthYear = null;
     _selectedGender = '';
     _termsAgreed = false;
     _privacyAgreed = false;
@@ -88,28 +90,81 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         );
   }
 
-  Future<void> _selectBirthdate() async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectBirthYear() async {
+    final nowYear = DateTime.now().year;
+    final years = List<int>.generate(nowYear - 1900 + 1, (i) => nowYear - i);
+    int temp = _selectedBirthYear ?? 2000;
+
+    final picked = await showModalBottomSheet<int>(
       context: context,
-      initialDate: DateTime(2000, 1, 1),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary500,
+      isScrollControlled: false,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.paddingMD,
+                    vertical: AppSpacing.paddingSM,
+                  ),
+                  child: Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(null),
+                        child: const Text('취소'),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '출생연도 선택',
+                        style: AppTypography.h5,
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(temp),
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListWheelScrollView.useDelegate(
+                    itemExtent: 44,
+                    physics: const FixedExtentScrollPhysics(),
+                    onSelectedItemChanged: (idx) {
+                      temp = years[idx];
+                    },
+                    controller: FixedExtentScrollController(
+                      initialItem: years.indexOf(temp).clamp(0, years.length - 1),
+                    ),
+                    childDelegate: ListWheelChildBuilderDelegate(
+                      childCount: years.length,
+                      builder: (context, index) {
+                        final y = years[index];
+                        return Center(
+                          child: Text(
+                            '$y년',
+                            style: AppTypography.bodyLarge,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          child: child!,
         );
       },
     );
 
     if (picked != null) {
       setState(() {
-        _birthdateController.text =
-            '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+        _selectedBirthYear = picked;
+        _birthdateController.text = '$picked';
       });
     }
   }
@@ -262,17 +317,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 const SizedBox(height: AppSpacing.paddingMD),
 
-                // 생년월일
+                // 출생연도
                 AppInput(
-                  label: '생년월일',
-                  placeholder: '1990-01-01',
+                  label: '출생연도',
+                  placeholder: '1990',
                   controller: _birthdateController,
                   readOnly: true,
-                  onTap: _selectBirthdate,
-                  suffixIcon: const Icon(Icons.calendar_today),
+                  onTap: _selectBirthYear,
+                  suffixIcon: const Icon(Icons.expand_more),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return '생년월일을 선택해주세요';
+                      return '출생연도를 선택해주세요';
                     }
                     return null;
                   },

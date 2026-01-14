@@ -99,70 +99,83 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary500,
       body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // 앱 로고 (아이콘으로 임시 대체)
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: AppColors.textOnPrimary,
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusXL),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.shadowMedium,
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.brandTeal,
+                AppColors.brandSky,
+              ],
+            ),
+          ),
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 앱 로고 (아이콘으로 임시 대체)
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: AppColors.textOnPrimary,
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusXL),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.shadowMedium,
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.place,
+                          size: 64,
+                          color: AppColors.primary500,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.place,
-                        size: 64,
-                        color: AppColors.primary500,
+                      const SizedBox(height: AppSpacing.paddingXL),
+                      // 앱 이름
+                      Text(
+                        'Walker홀릭',
+                        style: AppTypography.h1.copyWith(
+                          color: AppColors.textOnPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.paddingXL),
-                    // 앱 이름
-                    Text(
-                      'Walker홀릭',
-                      style: AppTypography.h1.copyWith(
-                        color: AppColors.textOnPrimary,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: AppSpacing.paddingSM),
+                      // 슬로건
+                      Text(
+                        '걸으며 쿠폰을 얻고 사용해요',
+                        style: AppTypography.bodyLarge.copyWith(
+                          color: AppColors.textOnPrimary.withOpacity(0.9),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.paddingSM),
-                    // 슬로건
-                    Text(
-                      '걸으며 쿠폰을 얻고 사용해요',
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: AppColors.textOnPrimary.withOpacity(0.9),
+                      const SizedBox(height: AppSpacing.paddingXXL),
+                      // 버전 정보
+                      Text(
+                        'v1.0.0',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textOnPrimary.withOpacity(0.7),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.paddingXXL),
-                    // 버전 정보
-                    Text(
-                      'v1.0.0',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textOnPrimary.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

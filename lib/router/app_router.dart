@@ -7,7 +7,6 @@ import '../screens/auth/auth_screens.dart';
 import '../screens/coupons/coupons_screen.dart';
 import '../screens/friends/friends_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/profile/profile_screen.dart';
 import '../screens/profile/personal_info_screen.dart';
 import '../screens/settings/connect_program_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
@@ -76,12 +75,24 @@ final appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
+              path: '/my',
+              builder: (context, state) => const SettingsScreen(),
               routes: [
                 GoRoute(
                   path: 'info',
                   builder: (context, state) => const PersonalInfoScreen(),
+                ),
+                GoRoute(
+                  path: 'profile',
+                  builder: (context, state) => const ProfileSettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'notifications',
+                  builder: (context, state) => const NotificationSettingsScreen(),
+                ),
+                GoRoute(
+                  path: 'connect',
+                  builder: (context, state) => const ConnectProgramScreen(),
                 ),
               ],
             ),
@@ -91,20 +102,9 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsScreen(),
+      redirect: (context, state) => '/my',
       routes: [
-        GoRoute(
-          path: 'profile',
-          builder: (context, state) => const ProfileSettingsScreen(),
-        ),
-        GoRoute(
-          path: 'notifications',
-          builder: (context, state) => const NotificationSettingsScreen(),
-        ),
-        GoRoute(
-          path: 'connect',
-          builder: (context, state) => const ConnectProgramScreen(),
-        ),
+        // kept only for backward-compat (redirected). All settings live under `/my/*`.
       ],
     ),
   ],

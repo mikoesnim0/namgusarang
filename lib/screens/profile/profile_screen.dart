@@ -48,7 +48,7 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: '설정',
-            onPressed: () => context.push('/settings'),
+            onPressed: () => context.push('/my'),
             icon: const Icon(Icons.settings),
           ),
         ],
@@ -79,7 +79,7 @@ class ProfileScreen extends ConsumerWidget {
                     leading: const Icon(Icons.assignment_ind_outlined),
                     title: Text('개인 정보', style: AppTypography.bodyLarge),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/profile/info'),
+                    onTap: () => context.push('/my/info'),
                   ),
                   const Divider(height: 1),
                   ListTile(
@@ -87,7 +87,7 @@ class ProfileScreen extends ConsumerWidget {
                     leading: const Icon(Icons.notifications_outlined),
                     title: Text('알림', style: AppTypography.bodyLarge),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/settings/notifications'),
+                    onTap: () => context.push('/my/notifications'),
                   ),
                 ],
               ),

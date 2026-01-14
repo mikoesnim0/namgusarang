@@ -47,7 +47,7 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                    onTap: () => context.go('/profile'),
+                    onTap: () => context.go('/my'),
                     child: Row(
                       children: [
                         const CircleAvatar(

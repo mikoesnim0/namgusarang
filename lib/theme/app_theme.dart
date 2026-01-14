@@ -4,7 +4,7 @@ import 'app_colors.dart';
 import 'app_typography.dart';
 import 'app_spacing.dart';
 
-/// 남구이야기 앱의 통합 테마
+/// Walker홀릭 앱의 통합 테마
 class AppTheme {
   AppTheme._();
 
