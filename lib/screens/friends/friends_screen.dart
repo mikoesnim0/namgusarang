@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../features/friends/friends_provider.dart';
+import '../../features/settings/settings_provider.dart';
+import '../../features/auth/auth_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_spacing.dart';
@@ -21,18 +23,46 @@ class FriendsScreen extends ConsumerWidget {
     final invite = ref.watch(inviteInfoProvider);
     final totalReward = ref.watch(totalFriendRewardProvider);
     final ranking = ref.watch(friendRankingProvider);
+    final settingsAsync = ref.watch(settingsControllerProvider);
+    final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final settingsNickname = settingsAsync.valueOrNull?.profile.nickname;
+    final docNickname = (userDoc?['nickname'] as String?)?.trim();
+    final authNickname = authUser?.displayName?.trim();
+    final nickname = (docNickname?.isNotEmpty == true)
+        ? docNickname!
+        : (authNickname?.isNotEmpty == true)
+            ? authNickname!
+            : (settingsNickname?.trim().isNotEmpty == true)
+                ? settingsNickname!.trim()
+                : '닉네임';
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('친구'),
+        leadingWidth: 140,
         leading: Padding(
           padding: const EdgeInsets.only(left: 8),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
             onTap: () => context.push('/my'),
-            child: const CircleAvatar(
-              backgroundColor: AppColors.gray200,
-              child: Icon(Icons.person, color: AppColors.textSecondary),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.gray200,
+                  child: Icon(Icons.person, color: AppColors.textSecondary),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

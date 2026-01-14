@@ -86,20 +86,6 @@ class AppBottomNav extends StatelessWidget {
               ),
             ),
 
-            // Raised base behind center button (matches bar color)
-            Positioned(
-              top: 6,
-              child: Container(
-                width: 120,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(32),
-                ),
-              ),
-            ),
-
             // Floating center button
             Positioned(
               top: 0,
@@ -184,50 +170,66 @@ class _CenterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppColors.surface;
-    final fg = AppColors.primary500;
+    final accent = isActive ? AppColors.primary500 : AppColors.gray500;
+    final bg = isActive ? AppColors.primary500 : AppColors.surface;
+    final fg = isActive ? AppColors.textOnPrimary : AppColors.primary500;
     final shadow = AppColors.shadowMedium;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        customBorder: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28.5),
-        ),
-        child: Container(
-          width: 104,
-          height: 57,
-          decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(
-              color: AppColors.primary500,
-              width: 2,
+        customBorder: const CircleBorder(),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surface,
+                border: Border.all(color: accent, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: shadow,
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(28.5),
-            boxShadow: [
-              BoxShadow(
-                color: shadow,
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: bg,
+                border: Border.all(color: accent, width: 2),
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.confirmation_number,
-                color: fg,
-                size: 22,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.confirmation_number,
+                    color: fg,
+                    size: 22,
+                  ),
+                  const SizedBox(height: 2),
+                  SizedBox(
+                    height: 14,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '쿠폰함',
+                        style: AppTypography.labelSmall.copyWith(color: fg),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                '쿠폰함',
-                style: AppTypography.labelLarge.copyWith(color: fg),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
