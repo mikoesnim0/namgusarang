@@ -311,6 +311,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     if (value.length < 2) {
                       return '닉네임은 최소 2자 이상이어야 합니다';
                     }
+                    if (value.length > 12) {
+                      return '닉네임은 최대 12자까지 가능합니다';
+                    }
                     return null;
                   },
                 ),
