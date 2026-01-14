@@ -37,7 +37,7 @@ class FriendsScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: AppTheme.screenPadding,
+        padding: AppTheme.screenPadding.copyWith(bottom: 120),
         children: [
           AppCard(
             variant: CardVariant.elevated,

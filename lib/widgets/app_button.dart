@@ -47,7 +47,15 @@ class AppButton extends StatelessWidget {
                 icon!,
                 SizedBox(width: AppSpacing.paddingSM),
               ],
-              Text(text),
+              Flexible(
+                fit: FlexFit.loose,
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           );
 
