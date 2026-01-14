@@ -120,7 +120,7 @@ class _NavTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.only(top: 10, bottom: 8),
+        padding: const EdgeInsets.only(top: 9, bottom: 7),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -154,7 +154,7 @@ class _CenterLabel extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.only(top: 10, bottom: 8),
+        padding: const EdgeInsets.only(top: 9, bottom: 7),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
