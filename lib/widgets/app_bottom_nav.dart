@@ -188,7 +188,7 @@ class _CenterButton extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.gray50,
-                border: Border.all(color: accent, width: 2),
+                border: Border.all(color: AppColors.gray50, width: 2),
               ),
             ),
             Container(
