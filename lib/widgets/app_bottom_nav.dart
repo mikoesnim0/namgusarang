@@ -120,17 +120,23 @@ class _NavTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.only(top: 9, bottom: 7),
+        padding: const EdgeInsets.only(top: 6, bottom: 4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Icon(icon, color: color),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelMedium.copyWith(color: color),
+            const SizedBox(height: 2),
+            SizedBox(
+              height: 18,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelLarge.copyWith(color: color),
+                ),
+              ),
             ),
           ],
         ),
@@ -152,24 +158,7 @@ class _CenterLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      selected: isActive,
-      label: label,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 9, bottom: 7),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              const SizedBox(height: 26), // reserve icon space (floating button)
-              const SizedBox(height: 4),
-              const SizedBox(height: 16), // reserve label height
-            ],
-          ),
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -181,25 +170,27 @@ class _CenterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isActive ? AppColors.primary500 : AppColors.surface;
-    final fg = isActive ? AppColors.textOnPrimary : AppColors.primary500;
+    final bg = AppColors.surface;
+    final fg = AppColors.primary500;
     final shadow = AppColors.shadowMedium;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        customBorder: const CircleBorder(),
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28.5),
+        ),
         child: Container(
-          width: 64,
-          height: 64,
+          width: 104,
+          height: 57,
           decoration: BoxDecoration(
             color: bg,
-            shape: BoxShape.circle,
             border: Border.all(
-              color: isActive ? AppColors.primary500 : AppColors.border,
+              color: AppColors.primary500,
               width: 2,
             ),
+            borderRadius: BorderRadius.circular(28.5),
             boxShadow: [
               BoxShadow(
                 color: shadow,
@@ -219,7 +210,7 @@ class _CenterButton extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 '쿠폰함',
-                style: AppTypography.labelMedium.copyWith(color: fg),
+                style: AppTypography.labelLarge.copyWith(color: fg),
               ),
             ],
           ),
