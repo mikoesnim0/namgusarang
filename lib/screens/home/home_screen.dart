@@ -34,9 +34,11 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenPaddingHorizontal,
-          vertical: 12,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screenPaddingHorizontal,
+          12,
+          AppSpacing.screenPaddingHorizontal,
+          120,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -354,4 +356,3 @@ class _MissionTile extends StatelessWidget {
     );
   }
 }
-
