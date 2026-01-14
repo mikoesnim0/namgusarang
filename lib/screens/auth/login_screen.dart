@@ -158,7 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppSpacing.paddingLG),
                       Text(
-                        '남구이야기',
+                        'Walker홀릭',
                         style: AppTypography.h2,
                       ),
                       const SizedBox(height: AppSpacing.paddingSM),

@@ -21,7 +21,7 @@ void main() {
     await tester.pump();
 
     // We render the splash title.
-    expect(find.text('남구이야기'), findsOneWidget);
+    expect(find.text('Walker홀릭'), findsOneWidget);
 
     // Splash has a 2s delayed navigation; advance time so no pending timers remain.
     await tester.pump(const Duration(seconds: 3));

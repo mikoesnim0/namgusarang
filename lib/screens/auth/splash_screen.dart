@@ -136,7 +136,7 @@ class _SplashScreenState extends State<SplashScreen>
                     const SizedBox(height: AppSpacing.paddingXL),
                     // 앱 이름
                     Text(
-                      '남구이야기',
+                      'Walker홀릭',
                       style: AppTypography.h1.copyWith(
                         color: AppColors.textOnPrimary,
                         fontWeight: FontWeight.bold,

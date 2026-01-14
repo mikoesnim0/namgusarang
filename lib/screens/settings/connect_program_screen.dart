@@ -103,7 +103,7 @@ class ConnectProgramScreen extends StatelessWidget {
       scheme: 'mailto',
       path: _supportEmail,
       queryParameters: {
-        'subject': '[남구이야기] 문의',
+        'subject': '[Walker홀릭] 문의',
         'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0)',
       },
     );
@@ -126,7 +126,7 @@ class ConnectProgramScreen extends StatelessWidget {
 
   Future<void> _shareInvite(BuildContext context) async {
     try {
-      await Share.share('남구이야기 초대 링크: $_inviteLink');
+      await Share.share('Walker홀릭 초대 링크: $_inviteLink');
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

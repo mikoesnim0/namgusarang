@@ -100,7 +100,7 @@ class FriendsScreen extends ConsumerWidget {
                         isFullWidth: true,
                         onPressed: () async {
                           try {
-                            await Share.share('남구이야기 초대 링크: ${invite.link}');
+                            await Share.share('Walker홀릭 초대 링크: ${invite.link}');
                           } catch (_) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
