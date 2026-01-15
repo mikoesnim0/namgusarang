@@ -78,7 +78,4 @@ android {
 
 flutter {
     source = "../.."
-    if (kakaoKey.isNotBlank()) {
-        dartDefines = listOf("KAKAO_NATIVE_APP_KEY=$kakaoKey")
-    }
 }

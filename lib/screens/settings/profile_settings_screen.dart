@@ -7,6 +7,7 @@ import '../../features/settings/settings_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_colors.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_input.dart';
@@ -22,7 +23,6 @@ class ProfileSettingsScreen extends ConsumerStatefulWidget {
 class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nicknameController;
-  late final TextEditingController _emailController;
 
   AgeRange? _ageRange;
   Gender? _gender;
@@ -32,13 +32,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   void initState() {
     super.initState();
     _nicknameController = TextEditingController();
-    _emailController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nicknameController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 
@@ -62,7 +60,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     if (!_formKey.currentState!.validate()) return;
     final next = current.copyWith(
       nickname: _nicknameController.text.trim(),
-      email: _emailController.text.trim(),
       ageRange: _ageRange ?? current.ageRange,
       gender: _gender ?? current.gender,
     );
@@ -127,22 +124,22 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           final p = settings.profile;
           if (!_didHydrate) {
             final docNickname = (userDoc?['nickname'] as String?)?.trim();
-            final docEmail = (userDoc?['email'] as String?)?.trim();
             final docAgeRange = userDoc?['ageRange'] as String?;
             final docGender = userDoc?['gender'] as String?;
 
             _nicknameController.text =
                 (docNickname?.isNotEmpty == true) ? docNickname! : p.nickname;
-            _emailController.text = (docEmail?.isNotEmpty == true)
-                ? docEmail!
-                : (authUser?.email?.trim().isNotEmpty == true
-                    ? authUser!.email!.trim()
-                    : p.email);
 
             _ageRange = _parseAgeRange(docAgeRange) ?? p.ageRange;
             _gender = _parseGender(docGender) ?? p.gender;
             _didHydrate = true;
           }
+          final email = (authUser?.email?.trim().isNotEmpty == true)
+              ? authUser!.email!.trim()
+              : ((userDoc?['email'] as String?)?.trim().isNotEmpty == true
+                  ? (userDoc?['email'] as String)
+                  : p.email);
+          final emailVerified = authUser?.emailVerified ?? false;
           return SingleChildScrollView(
             padding: AppTheme.screenPadding,
             child: Form(
@@ -162,19 +159,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                             final value = v?.trim() ?? '';
                             if (value.isEmpty) return '닉네임을 입력해주세요';
                             if (value.length < 2) return '닉네임은 2자 이상';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.paddingMD),
-                        AppInput(
-                          label: '이메일',
-                          placeholder: 'abcd@gmail.com',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) {
-                            final value = v?.trim() ?? '';
-                            if (value.isEmpty) return '이메일을 입력해주세요';
-                            if (!value.contains('@')) return '올바른 이메일 형식이 아닙니다';
                             return null;
                           },
                         ),
@@ -203,6 +187,57 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                             Gender.other => '기타',
                           },
                           onChanged: (v) => setState(() => _gender = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.paddingMD),
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('이메일', style: AppTypography.labelMedium),
+                        const SizedBox(height: AppSpacing.paddingSM),
+                        Text(
+                          email,
+                          style: AppTypography.bodyMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.paddingSM),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                emailVerified
+                                    ? '인증 완료'
+                                    : '이메일 인증이 필요합니다',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: emailVerified
+                                      ? AppColors.primary500
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            if (!emailVerified)
+                              TextButton(
+                                onPressed: () async {
+                                  final user = ref
+                                      .read(authStateProvider)
+                                      .valueOrNull;
+                                  if (user == null) return;
+                                  await user.sendEmailVerification();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('인증 메일을 보냈습니다. 메일함을 확인해주세요.'),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('인증 메일 보내기'),
+                              ),
+                          ],
                         ),
                       ],
                     ),
@@ -262,4 +297,3 @@ class _DropdownRow<T> extends StatelessWidget {
     );
   }
 }
-

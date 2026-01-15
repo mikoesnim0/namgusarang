@@ -40,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
             nickname: nickname,
             roundTitle: home.cycle.roundTitle,
             daysLeft: home.cycle.daysLeft,
-            onProfileTap: () => context.go('/my'),
+            onProfileTap: () => context.go('/my/info'),
             onSettingsTap: () => context.push('/settings'),
           ),
           Expanded(

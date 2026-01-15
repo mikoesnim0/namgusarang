@@ -295,23 +295,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const SizedBox(height: AppSpacing.paddingMD),
 
-                // Apple 로그인
-                SizedBox(
-                  height: 48,
-                  width: double.infinity,
-                  child: Opacity(
-                    opacity: (isAppleSupported && !isLoading) ? 1 : 0.5,
-                    child: SignInWithAppleButton(
-                      onPressed: () {
-                        if (!isAppleSupported || isLoading) return;
-                        _handleAppleLogin();
-                      },
-                      style: SignInWithAppleButtonStyle.black,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
-                      text: 'Apple로 계속하기',
+                // Apple 로그인 (iOS/macOS only)
+                if (isAppleSupported)
+                  SizedBox(
+                    height: 48,
+                    width: double.infinity,
+                    child: Opacity(
+                      opacity: (!isLoading) ? 1 : 0.5,
+                      child: SignInWithAppleButton(
+                        onPressed: () {
+                          if (isLoading) return;
+                          _handleAppleLogin();
+                        },
+                        style: SignInWithAppleButtonStyle.black,
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                        text: 'Apple로 계속하기',
+                      ),
                     ),
                   ),
-                ),
                 if (!isKakaoSupported) ...[
                   const SizedBox(height: AppSpacing.paddingSM),
                   Text(
@@ -334,16 +335,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
-                if (!isAppleSupported) ...[
-                  const SizedBox(height: AppSpacing.paddingSM),
-                  Text(
-                    'Apple 로그인은 iOS/macOS에서만 지원됩니다.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                if (!isAppleSupported) const SizedBox.shrink(),
 
                 const SizedBox(height: AppSpacing.paddingXL),
 

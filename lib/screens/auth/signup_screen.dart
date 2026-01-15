@@ -94,69 +94,117 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     final nowYear = DateTime.now().year;
     final years = List<int>.generate(nowYear - 1900 + 1, (i) => nowYear - i);
     int temp = _selectedBirthYear ?? 2000;
+    int selectedIndex = years.indexOf(temp).clamp(0, years.length - 1);
 
     final picked = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: false,
       showDragHandle: true,
       builder: (context) {
-        return SafeArea(
-          child: SizedBox(
-            height: 320,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.paddingMD,
-                    vertical: AppSpacing.paddingSM,
-                  ),
-                  child: Row(
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(null),
-                        child: const Text('취소'),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: SizedBox(
+                height: 320,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.paddingMD,
+                        vertical: AppSpacing.paddingSM,
                       ),
-                      const Spacer(),
-                      Text(
-                        '출생연도 선택',
-                        style: AppTypography.h5,
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(temp),
-                        child: const Text('확인'),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: ListWheelScrollView.useDelegate(
-                    itemExtent: 44,
-                    physics: const FixedExtentScrollPhysics(),
-                    onSelectedItemChanged: (idx) {
-                      temp = years[idx];
-                    },
-                    controller: FixedExtentScrollController(
-                      initialItem: years.indexOf(temp).clamp(0, years.length - 1),
-                    ),
-                    childDelegate: ListWheelChildBuilderDelegate(
-                      childCount: years.length,
-                      builder: (context, index) {
-                        final y = years[index];
-                        return Center(
-                          child: Text(
-                            '$y년',
-                            style: AppTypography.bodyLarge,
+                      child: Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(null),
+                            child: const Text('취소'),
                           ),
-                        );
-                      },
+                          const Spacer(),
+                          Text(
+                            '출생연도 선택',
+                            style: AppTypography.h5,
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(temp),
+                            child: const Text('확인'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ListWheelScrollView.useDelegate(
+                            itemExtent: 44,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (idx) {
+                              setModalState(() {
+                                selectedIndex = idx;
+                                temp = years[idx];
+                              });
+                            },
+                            controller: FixedExtentScrollController(
+                              initialItem: selectedIndex,
+                            ),
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: years.length,
+                              builder: (context, index) {
+                                final y = years[index];
+                                final isSelected = index == selectedIndex;
+                                return Center(
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.paddingMD,
+                                      vertical: AppSpacing.paddingSM,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.gray100
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusMD,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '$y년',
+                                      style: (isSelected
+                                              ? AppTypography.h5
+                                              : AppTypography.bodyLarge)
+                                          .copyWith(
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Positioned(
+                            top: (44 * 2).toDouble(),
+                            left: 0,
+                            right: 0,
+                            child: const Divider(height: 1),
+                          ),
+                          Positioned(
+                            top: (44 * 3).toDouble(),
+                            left: 0,
+                            right: 0,
+                            child: const Divider(height: 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
