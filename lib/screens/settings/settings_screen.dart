@@ -71,7 +71,7 @@ class SettingsScreen extends ConsumerWidget {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/');
+              context.go('/home');
             }
           },
         ),
