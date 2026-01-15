@@ -8,6 +8,13 @@ plugins {
 
 import java.util.Properties
 
+val localProps = Properties()
+val localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localProps.load(localPropsFile.inputStream())
+}
+val kakaoKey = (localProps["kakao.native_app_key"] as String?) ?: ""
+
 android {
     namespace = "com.doyakmin.hangookji.namgu"
     compileSdk = flutter.compileSdkVersion
@@ -33,12 +40,6 @@ android {
 
         // Kakao native app key injection (keep secrets in android/local.properties)
         // Add: kakao.native_app_key=YOUR_NATIVE_APP_KEY
-        val localProps = Properties()
-        val localPropsFile = rootProject.file("local.properties")
-        if (localPropsFile.exists()) {
-            localProps.load(localPropsFile.inputStream())
-        }
-        val kakaoKey = (localProps["kakao.native_app_key"] as String?) ?: ""
         resValue("string", "kakao_app_key", kakaoKey)
         manifestPlaceholders["kakaoScheme"] = "kakao$kakaoKey"
     }
@@ -77,4 +78,7 @@ android {
 
 flutter {
     source = "../.."
+    if (kakaoKey.isNotBlank()) {
+        dartDefines = listOf("KAKAO_NATIVE_APP_KEY=$kakaoKey")
+    }
 }

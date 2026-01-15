@@ -32,11 +32,11 @@
 
 #### 2. 기술명세서 - `기술명세서_v1.0.md`
 - **기술 스택 결정**:
-  - Frontend: React Native 0.83.1 + TypeScript
+  - Frontend: Flutter 0.83.1 + Dart
   - Backend: Firebase (Auth, Firestore, Storage, Cloud Functions)
   - 지도: Kakao/Naver Map API
-  - 상태관리: Zustand
-  - UI: React Native Paper
+  - 상태관리: Riverpod
+  - UI: Material 3
   - 결제: Bootpay
 - **아키텍처 설계**:
   - 3-Tier 구조 (Client - Backend - Database)
@@ -78,11 +78,11 @@
 
 ---
 
-### 💻 Phase 1: React Native 프로젝트 세팅 (30분)
+### 💻 Phase 1: Flutter 프로젝트 세팅 (30분)
 
 #### 1. 프로젝트 생성
 ```bash
-✅ React Native 0.83.1 + TypeScript
+✅ Flutter 0.83.1 + Dart
 ✅ 프로젝트명: NamguApp
 ✅ 패키지명: com.doyakmin.hankookji.namgu
 ```
@@ -150,7 +150,7 @@ src/
 ├── services/       # API/Firebase
 ├── hooks/          # Custom Hooks
 ├── store/          # 상태 관리
-├── types/          # TypeScript 타입
+├── types/          # Dart 타입
 ├── utils/          # 유틸리티
 ├── config/         # 설정
 └── assets/         # 리소스
@@ -158,7 +158,7 @@ src/
 
 **생성된 파일**:
 - ✅ `src/config/firebase.ts` - Firebase 설정
-- ✅ `src/types/index.ts` - TypeScript 타입 (User, Coupon, Mission, Place)
+- ✅ `src/types/index.ts` - Dart 타입 (User, Coupon, Mission, Place)
 - ✅ `src/utils/index.ts` - 유틸리티 함수
 - ✅ `src/navigation/RootNavigator.tsx` - 네비게이션 구조
 - ✅ `src/store/authStore.ts` - 인증 상태 관리
@@ -213,7 +213,7 @@ Consult/namgu/
 
 ### 통계
 - **총 문서**: 9개
-- **총 코드 파일**: 10개 (TypeScript/TSX)
+- **총 코드 파일**: 10개 (Dart/Dart)
 - **총 라이브러리**: 956개 패키지
 - **총 작업 시간**: 약 56분
 - **총 코드 라인**: 약 1,500줄 (문서 포함)
@@ -263,9 +263,9 @@ Consult/namgu/
 ## 💡 주요 결정 사항
 
 ### 기술 스택
-1. **React Native** 선택 이유:
+1. **Flutter** 선택 이유:
    - Android + iOS 동시 지원
-   - TypeScript 지원
+   - Dart 지원
    - Firebase와 완벽 호환
    - 개발 속도
 
@@ -275,22 +275,22 @@ Consult/namgu/
    - 인증/스토리지/푸시 올인원
    - 초기 비용 저렴
 
-3. **Zustand** 선택 이유:
+3. **Riverpod** 선택 이유:
    - Redux보다 간단
-   - TypeScript 친화적
+   - Dart 친화적
    - 번들 크기 작음
 
 ### 디자인 방향
 - **컨셉**: 심플 + 귀여움
 - **주 컬러**: 초록색 (#4CAF50)
-- **UI 라이브러리**: React Native Paper (Material Design)
+- **UI 라이브러리**: Material 3 (Material Design)
 
 ---
 
 ## ⚠️ 주의사항 및 이슈
 
 ### 해결된 이슈
-1. ✅ React Native CLI 템플릿 오류
+1. ✅ Flutter CLI 템플릿 오류
    - `--template` 플래그 제거로 해결
 2. ✅ 패키지명 불일치
    - `com.namguapp` → `com.doyakmin.hankookji.namgu` 변경 완료
@@ -321,7 +321,7 @@ Consult/namgu/
 **Day 1-2의 목표를 100% 달성했습니다!**
 
 - ✅ 완벽한 기획 문서 (6개)
-- ✅ React Native 프로젝트 세팅
+- ✅ Flutter 프로젝트 세팅
 - ✅ Firebase 연동 완료
 - ✅ 기본 네비게이션 구조 완성
 - ✅ 상태 관리 구조 구축

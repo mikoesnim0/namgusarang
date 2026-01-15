@@ -84,13 +84,12 @@ hangookji_namgu/
 
 ### 필수 문서
 1. **[PRD (제품 요구사항)](documents/prd/남구이야기_PRD_v1.0.md)**
-   - 150개 요구사항 상세 정리
-   - 기능별 상세 스펙
+   - 핵심 기능/범위 요약
+   - MVP 범위 정의
 
 2. **[기술명세서](documents/tech-spec/기술명세서_v1.0.md)**
-   - 아키텍처 설계
-   - API 명세
-   - 보안 전략
+   - Flutter/Firebase 기준 기술 스택
+   - 인증/데이터 구조 요약
 
 3. **[데이터 모델](documents/data-model/firestore-schema.md)**
    - Firestore 컬렉션 구조
