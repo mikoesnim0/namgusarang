@@ -225,7 +225,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         data: (_) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('회원가입이 완료되었습니다!')),
+            const SnackBar(
+              content: Text('회원가입이 완료되었습니다! 인증 메일을 확인해주세요.'),
+            ),
           );
           _clearForm();
           context.go('/home');

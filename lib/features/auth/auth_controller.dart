@@ -113,6 +113,7 @@ class AuthController extends AsyncNotifier<void> {
         'email': user.email ?? '',
       });
 
+      await user.sendEmailVerification();
       await users.upsertOnAuth(user: user, email: email);
       await users.updateProfile(
         uid: user.uid,
@@ -321,4 +322,3 @@ String friendlyAuthError(Object error) {
   }
   return '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.';
 }
-

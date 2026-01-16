@@ -40,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
             nickname: nickname,
             roundTitle: home.cycle.roundTitle,
             daysLeft: home.cycle.daysLeft,
-            onProfileTap: () => context.go('/my/info'),
+            onProfileTap: () => context.push('/my/info'),
             onSettingsTap: () => context.push('/settings'),
           ),
           Expanded(
@@ -212,51 +212,66 @@ class _HomeHeader extends StatelessWidget {
             horizontal: AppSpacing.screenPaddingHorizontal,
             vertical: 12,
           ),
-          child: Row(
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                onTap: onProfileTap,
-                child: Row(
+              Align(
+                alignment: Alignment.center,
+                child: Column(
                   children: [
-                    const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.gray200,
-                      child:
-                          Icon(Icons.person, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(width: 8),
                     Text(
-                      nickname,
-                      style: AppTypography.labelLarge.copyWith(
+                      roundTitle,
+                      style: AppTypography.h5.copyWith(
+                        color: AppColors.textOnPrimary,
+                      ),
+                    ),
+                    Text(
+                      '티켓 리셋까지 ${daysLeft}일',
+                      style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textOnPrimary,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Spacer(),
-              Column(
-                children: [
-                  Text(
-                    roundTitle,
-                    style: AppTypography.h5.copyWith(
-                      color: AppColors.textOnPrimary,
-                    ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                  onTap: onProfileTap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.gray200,
+                        child:
+                            Icon(Icons.person, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(width: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 140),
+                        child: Text(
+                          nickname,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.labelLarge.copyWith(
+                            color: AppColors.textOnPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '티켓 리셋까지 ${daysLeft}일',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textOnPrimary,
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const Spacer(),
-              IconButton(
-                tooltip: '설정',
-                onPressed: onSettingsTap,
-                icon: const Icon(Icons.settings, color: AppColors.textOnPrimary),
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: '설정',
+                  onPressed: onSettingsTap,
+                  icon:
+                      const Icon(Icons.settings, color: AppColors.textOnPrimary),
+                ),
               ),
             ],
           ),

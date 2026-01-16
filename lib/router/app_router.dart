@@ -14,6 +14,28 @@ import '../screens/settings/profile_settings_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import 'main_shell.dart';
 
+CustomTransitionPage<void> _slidePage({
+  required Widget child,
+  LocalKey? key,
+}) {
+  return CustomTransitionPage<void>(
+    key: key,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 220),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final tween = Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic));
+      return SlideTransition(
+        position: animation.drive(tween),
+        child: child,
+      );
+    },
+  );
+}
+
 final appRouter = GoRouter(
   initialLocation: '/',
   redirect: (context, state) {
@@ -76,23 +98,38 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/my',
-      builder: (context, state) => const SettingsScreen(),
+      pageBuilder: (context, state) => _slidePage(
+        key: state.pageKey,
+        child: const SettingsScreen(),
+      ),
       routes: [
         GoRoute(
           path: 'info',
-          builder: (context, state) => const PersonalInfoScreen(),
+          pageBuilder: (context, state) => _slidePage(
+            key: state.pageKey,
+            child: const PersonalInfoScreen(),
+          ),
         ),
         GoRoute(
           path: 'profile',
-          builder: (context, state) => const ProfileSettingsScreen(),
+          pageBuilder: (context, state) => _slidePage(
+            key: state.pageKey,
+            child: const ProfileSettingsScreen(),
+          ),
         ),
         GoRoute(
           path: 'notifications',
-          builder: (context, state) => const NotificationSettingsScreen(),
+          pageBuilder: (context, state) => _slidePage(
+            key: state.pageKey,
+            child: const NotificationSettingsScreen(),
+          ),
         ),
         GoRoute(
           path: 'connect',
-          builder: (context, state) => const ConnectProgramScreen(),
+          pageBuilder: (context, state) => _slidePage(
+            key: state.pageKey,
+            child: const ConnectProgramScreen(),
+          ),
         ),
       ],
     ),
@@ -123,4 +160,3 @@ class _RouterErrorScreen extends StatelessWidget {
     );
   }
 }
-
