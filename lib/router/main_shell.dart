@@ -24,10 +24,6 @@ class _MainShellState extends State<MainShell> {
   }
 
   Future<void> _handleBack() async {
-    if (widget.navigationShell.currentIndex != 0) {
-      widget.navigationShell.goBranch(0);
-      return;
-    }
     final now = DateTime.now();
     if (_lastBackPressed == null ||
         now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../screens/auth/auth_screens.dart';
 import '../screens/coupons/coupons_screen.dart';
+import '../screens/friends/friend_requests_screen.dart';
 import '../screens/friends/friends_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/profile/personal_info_screen.dart';
@@ -91,6 +92,12 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/friends',
               builder: (context, state) => const FriendsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'requests',
+                  builder: (context, state) => const FriendRequestsScreen(),
+                ),
+              ],
             ),
           ],
         ),

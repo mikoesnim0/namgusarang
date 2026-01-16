@@ -5,6 +5,11 @@ import 'friends_model.dart';
 final friendsControllerProvider =
     NotifierProvider<FriendsController, List<Friend>>(FriendsController.new);
 
+final friendRequestsControllerProvider =
+    NotifierProvider<FriendRequestsController, FriendRequestsState>(
+  FriendRequestsController.new,
+);
+
 final inviteInfoProvider = Provider<InviteInfo>((ref) {
   // TODO: server-issued invite code once Auth is real
   return const InviteInfo(
@@ -36,6 +41,10 @@ class FriendsController extends Notifier<List<Friend>> {
     ];
   }
 
+  void addFriend(Friend friend) {
+    state = [friend, ...state];
+  }
+
   bool addFriendByInviteCode(String code) {
     final trimmed = code.trim();
     if (trimmed.length < 4) return false;
@@ -49,3 +58,55 @@ class FriendsController extends Notifier<List<Friend>> {
   }
 }
 
+class FriendRequestsController extends Notifier<FriendRequestsState> {
+  @override
+  FriendRequestsState build() {
+    final now = DateTime.now();
+    return FriendRequestsState(
+      sent: [
+        FriendRequest(
+          id: 'sent_1',
+          nickname: '홍길동',
+          requestedAt: now.subtract(const Duration(days: 2)),
+        ),
+      ],
+      received: [
+        FriendRequest(
+          id: 'received_1',
+          nickname: '새친구',
+          requestedAt: now.subtract(const Duration(hours: 6)),
+        ),
+      ],
+    );
+  }
+
+  void cancelSent(String requestId) {
+    state = state.copyWith(
+      sent: state.sent.where((r) => r.id != requestId).toList(),
+    );
+  }
+
+  void declineReceived(String requestId) {
+    state = state.copyWith(
+      received: state.received.where((r) => r.id != requestId).toList(),
+    );
+  }
+
+  void acceptReceived(String requestId) {
+    final idx = state.received.indexWhere((r) => r.id == requestId);
+    if (idx == -1) return;
+    final req = state.received[idx];
+
+    ref.read(friendsControllerProvider.notifier).addFriend(
+          Friend(
+            nickname: req.nickname,
+            rewardWon: 3000,
+            joinedAt: DateTime.now(),
+          ),
+        );
+
+    state = state.copyWith(
+      received: state.received.where((r) => r.id != requestId).toList(),
+    );
+  }
+}

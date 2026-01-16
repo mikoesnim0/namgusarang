@@ -21,6 +21,7 @@ class FriendsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final friends = ref.watch(friendsControllerProvider);
     final invite = ref.watch(inviteInfoProvider);
+    final requests = ref.watch(friendRequestsControllerProvider);
     final totalReward = ref.watch(totalFriendRewardProvider);
     final ranking = ref.watch(friendRankingProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
@@ -36,6 +37,7 @@ class FriendsScreen extends ConsumerWidget {
             : (settingsNickname?.trim().isNotEmpty == true)
                 ? settingsNickname!.trim()
                 : '닉네임';
+    final pendingCount = requests.sent.length + requests.received.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -235,6 +237,10 @@ class FriendsScreen extends ConsumerWidget {
             children: [
               Text('친구 목록', style: AppTypography.labelLarge),
               const Spacer(),
+              TextButton(
+                onPressed: () => context.push('/friends/requests'),
+                child: Text('수락 대기 ($pendingCount)'),
+              ),
               Text('${friends.length}명', style: AppTypography.bodySmall),
             ],
           ),

@@ -10,6 +10,38 @@ class Friend {
   final DateTime joinedAt;
 }
 
+class FriendRequest {
+  const FriendRequest({
+    required this.id,
+    required this.nickname,
+    required this.requestedAt,
+  });
+
+  final String id;
+  final String nickname;
+  final DateTime requestedAt;
+}
+
+class FriendRequestsState {
+  const FriendRequestsState({
+    required this.sent,
+    required this.received,
+  });
+
+  final List<FriendRequest> sent;
+  final List<FriendRequest> received;
+
+  FriendRequestsState copyWith({
+    List<FriendRequest>? sent,
+    List<FriendRequest>? received,
+  }) {
+    return FriendRequestsState(
+      sent: sent ?? this.sent,
+      received: received ?? this.received,
+    );
+  }
+}
+
 class InviteInfo {
   const InviteInfo({
     required this.code,
@@ -21,4 +53,3 @@ class InviteInfo {
   final String link;
   final int rewardWon;
 }
-
