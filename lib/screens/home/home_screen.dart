@@ -32,6 +32,8 @@ class HomeScreen extends ConsumerWidget {
                 ? settingsNickname!.trim()
                 : '닉네임';
 
+    final emailVerified = authUser?.emailVerified ?? true;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -42,6 +44,19 @@ class HomeScreen extends ConsumerWidget {
             daysLeft: home.cycle.daysLeft,
             onProfileTap: () => context.push('/my/info'),
             onSettingsTap: () => context.push('/settings'),
+            showVerifyBanner: !emailVerified,
+            onSendVerify: () async {
+              final user = ref.read(authStateProvider).valueOrNull;
+              if (user == null) return;
+              await user.sendEmailVerification();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('인증 메일을 보냈습니다. 메일함을 확인해주세요.'),
+                  ),
+                );
+              }
+            },
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -184,6 +199,8 @@ class _HomeHeader extends StatelessWidget {
     required this.daysLeft,
     required this.onProfileTap,
     required this.onSettingsTap,
+    required this.showVerifyBanner,
+    required this.onSendVerify,
   });
 
   final String nickname;
@@ -191,6 +208,8 @@ class _HomeHeader extends StatelessWidget {
   final int daysLeft;
   final VoidCallback onProfileTap;
   final VoidCallback onSettingsTap;
+  final bool showVerifyBanner;
+  final VoidCallback onSendVerify;
 
   @override
   Widget build(BuildContext context) {
@@ -212,67 +231,116 @@ class _HomeHeader extends StatelessWidget {
             horizontal: AppSpacing.screenPaddingHorizontal,
             vertical: 12,
           ),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Column(
             children: [
-              Align(
+              Stack(
                 alignment: Alignment.center,
-                child: Column(
-                  children: [
-                    Text(
-                      roundTitle,
-                      style: AppTypography.h5.copyWith(
-                        color: AppColors.textOnPrimary,
+                children: [
+                  Align(
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          roundTitle,
+                          style: AppTypography.h5.copyWith(
+                            color: AppColors.textOnPrimary,
+                          ),
+                        ),
+                        Text(
+                          '티켓 리셋까지 ${daysLeft}일',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textOnPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                      onTap: onProfileTap,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.gray200,
+                            child: Icon(Icons.person,
+                                color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 140),
+                            child: Text(
+                              nickname,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelLarge.copyWith(
+                                color: AppColors.textOnPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      '티켓 리셋까지 ${daysLeft}일',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textOnPrimary,
-                      ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      tooltip: '설정',
+                      onPressed: onSettingsTap,
+                      icon: const Icon(Icons.settings,
+                          color: AppColors.textOnPrimary),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                  onTap: onProfileTap,
+              if (showVerifyBanner) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.paddingMD,
+                    vertical: AppSpacing.paddingSM,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                    border: Border.all(
+                      color: AppColors.surface.withOpacity(0.35),
+                    ),
+                  ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.gray200,
-                        child:
-                            Icon(Icons.person, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.mark_email_read_outlined,
+                        color: AppColors.textOnPrimary,
+                        size: 18,
                       ),
                       const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 140),
+                      Expanded(
                         child: Text(
-                          nickname,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelLarge.copyWith(
+                          '이메일 인증이 필요합니다',
+                          style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textOnPrimary,
                           ),
                         ),
                       ),
+                      TextButton(
+                        onPressed: onSendVerify,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textOnPrimary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                        ),
+                        child: const Text('인증 메일'),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  tooltip: '설정',
-                  onPressed: onSettingsTap,
-                  icon:
-                      const Icon(Icons.settings, color: AppColors.textOnPrimary),
-                ),
-              ),
+              ],
             ],
           ),
         ),
