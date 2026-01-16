@@ -256,6 +256,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         },
         error: (e, st) {
           if (!mounted) return;
+          final rootContext = Navigator.of(context, rootNavigator: true).context;
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(friendlyAuthError(e)),
             action: kDebugMode
@@ -264,7 +265,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     onPressed: () async {
                       final details = debugAuthErrorDetails(e, st);
                       await showDialog<void>(
-                        context: context,
+                        context: rootContext,
                         builder: (context) => AlertDialog(
                           title: const Text('Auth error details'),
                           content: SingleChildScrollView(

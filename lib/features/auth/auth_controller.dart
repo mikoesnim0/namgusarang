@@ -273,6 +273,9 @@ String friendlyAuthError(Object error) {
     if (error.code == 'invalid-credential') {
       return '이메일/비밀번호가 올바르지 않습니다. (raw: ${error.code}${msg.isNotEmpty ? ', $msg' : ''})';
     }
+    if (error.code == 'network-request-failed') {
+      return '네트워크 오류가 발생했습니다. 인터넷 연결을 확인한 뒤 다시 시도해주세요.';
+    }
     if (error.code == 'keychain-error') {
       return 'macOS Keychain 접근 오류로 인증 정보를 저장하지 못했습니다. '
           '`macos/Runner/DebugProfile.entitlements`/`Release.entitlements`에 keychain-access-groups 설정 후 '
