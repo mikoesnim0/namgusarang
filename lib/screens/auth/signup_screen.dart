@@ -134,70 +134,92 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     const Divider(height: 1),
                     Expanded(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          ListWheelScrollView.useDelegate(
-                            itemExtent: 44,
-                            physics: const FixedExtentScrollPhysics(),
-                            onSelectedItemChanged: (idx) {
-                              setModalState(() {
-                                selectedIndex = idx;
-                                temp = years[idx];
-                              });
-                            },
-                            controller: FixedExtentScrollController(
-                              initialItem: selectedIndex,
-                            ),
-                            childDelegate: ListWheelChildBuilderDelegate(
-                              childCount: years.length,
-                              builder: (context, index) {
-                                final y = years[index];
-                                final isSelected = index == selectedIndex;
-                                return Center(
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 150),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.paddingMD,
-                                      vertical: AppSpacing.paddingSM,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.gray100
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(
-                                        AppSpacing.radiusMD,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const itemExtent = 44.0;
+                          final centerY = constraints.maxHeight / 2;
+                          final topLineY = centerY - (itemExtent / 2);
+                          final bottomLineY = centerY + (itemExtent / 2);
+
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              ListWheelScrollView.useDelegate(
+                                itemExtent: itemExtent,
+                                physics: const FixedExtentScrollPhysics(),
+                                onSelectedItemChanged: (idx) {
+                                  setModalState(() {
+                                    selectedIndex = idx;
+                                    temp = years[idx];
+                                  });
+                                },
+                                controller: FixedExtentScrollController(
+                                  initialItem: selectedIndex,
+                                ),
+                                childDelegate: ListWheelChildBuilderDelegate(
+                                  childCount: years.length,
+                                  builder: (context, index) {
+                                    final y = years[index];
+                                    final isSelected = index == selectedIndex;
+                                    return Center(
+                                      child: AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 150),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.paddingMD,
+                                          vertical: AppSpacing.paddingSM,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppColors.gray100
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(
+                                            AppSpacing.radiusMD,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '$y년',
+                                          style: (isSelected
+                                                  ? AppTypography.h5
+                                                  : AppTypography.bodyLarge)
+                                              .copyWith(
+                                            fontWeight: isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              IgnorePointer(
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      top: topLineY,
+                                      left: 16,
+                                      right: 16,
+                                      child: Container(
+                                        height: 1,
+                                        color: AppColors.border,
                                       ),
                                     ),
-                                    child: Text(
-                                      '$y년',
-                                      style: (isSelected
-                                              ? AppTypography.h5
-                                              : AppTypography.bodyLarge)
-                                          .copyWith(
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
+                                    Positioned(
+                                      top: bottomLineY,
+                                      left: 16,
+                                      right: 16,
+                                      child: Container(
+                                        height: 1,
+                                        color: AppColors.border,
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          Positioned(
-                            top: (44 * 2).toDouble(),
-                            left: 0,
-                            right: 0,
-                            child: const Divider(height: 1),
-                          ),
-                          Positioned(
-                            top: (44 * 3).toDouble(),
-                            left: 0,
-                            right: 0,
-                            child: const Divider(height: 1),
-                          ),
-                        ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ],

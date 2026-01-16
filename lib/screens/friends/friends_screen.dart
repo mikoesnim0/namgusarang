@@ -39,27 +39,20 @@ class FriendsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('친구'),
-        leadingWidth: 220,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Row(
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/home');
-                  }
-                },
-              ),
-              Expanded(
+              Align(
+                alignment: Alignment.centerLeft,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   onTap: () => context.push('/my/info'),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const CircleAvatar(
                         radius: 16,
@@ -68,7 +61,8 @@ class FriendsScreen extends ConsumerWidget {
                             Icon(Icons.person, color: AppColors.textSecondary),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 140),
                         child: Text(
                           nickname,
                           maxLines: 1,
@@ -80,20 +74,25 @@ class FriendsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const Align(
+                alignment: Alignment.center,
+                child: Text('친구'),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: '친구 추가',
+                  icon: const Icon(Icons.person_add_alt_1),
+                  onPressed: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => const _InviteSheet(),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: '친구 추가',
-            icon: const Icon(Icons.person_add_alt_1),
-            onPressed: () => showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => const _InviteSheet(),
-            ),
-          ),
-        ],
       ),
       body: ListView(
         padding: AppTheme.screenPadding.copyWith(bottom: 120),

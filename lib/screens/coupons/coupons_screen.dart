@@ -37,35 +37,30 @@ class CouponsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('쿠폰함'),
-        leadingWidth: 220,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Row(
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/home');
-                  }
-                },
-              ),
-              Expanded(
+              Align(
+                alignment: Alignment.centerLeft,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                   onTap: () => context.push('/my/info'),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const CircleAvatar(
                         radius: 16,
                         backgroundColor: AppColors.gray200,
-                        child: Icon(Icons.person, color: AppColors.textSecondary),
+                        child:
+                            Icon(Icons.person, color: AppColors.textSecondary),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 140),
                         child: Text(
                           nickname,
                           maxLines: 1,
@@ -76,6 +71,10 @@ class CouponsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+              ),
+              const Align(
+                alignment: Alignment.center,
+                child: Text('쿠폰함'),
               ),
             ],
           ),
