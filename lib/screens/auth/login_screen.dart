@@ -72,20 +72,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _passwordController.clear();
           context.go('/home');
         },
-        error: (e, st) {
-          if (!mounted) return;
-          final rootContext = Navigator.of(context, rootNavigator: true).context;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(friendlyAuthError(e)),
-            action: kDebugMode
-                ? SnackBarAction(
-                    label: 'DETAILS',
-                    onPressed: () async {
-                      final details = debugAuthErrorDetails(e, st);
-                      await showDialog<void>(
-                        context: rootContext,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Auth error details'),
+                error: (e, st) {
+                  if (!mounted) return;
+                  final rootContext = Navigator.of(context, rootNavigator: true).context;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(friendlyAuthError(e)),
+                    action: kDebugMode
+                        ? SnackBarAction(
+                            label: 'DETAILS',
+                            onPressed: () async {
+                              if (!rootContext.mounted) return;
+                              final details = debugAuthErrorDetails(e, st);
+                              await showDialog<void>(
+                                context: rootContext,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Auth error details'),
                           content: SingleChildScrollView(
                             child: SelectableText(details),
                           ),
@@ -246,13 +247,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: AppSpacing.paddingMD),
 
                 // 카카오 로그인
-                AppButton(
-                  text: '카카오로 로그인',
+                KakaoLoginButton(
                   onPressed: isKakaoSupported ? _handleKakaoLogin : null,
-                  variant: ButtonVariant.secondary,
                   isLoading: isLoading,
-                  isFullWidth: true,
-                  icon: const Icon(Icons.chat_bubble, size: 20),
                 ),
                 const SizedBox(height: AppSpacing.paddingMD),
 

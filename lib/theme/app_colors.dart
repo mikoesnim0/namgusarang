@@ -9,6 +9,11 @@ class AppColors {
   static const Color brandTeal = Color(0xFF10C4AE);
   static const Color brandSky = Color(0xFF69C2FF);
 
+  // 3rd party (Kakao login button spec)
+  static const Color kakaoYellow = Color(0xFFFEE500);
+  // Black 85% opacity (Kakao label spec)
+  static const Color kakaoLabel = Color(0xD9000000);
+
   // Primary Colors (teal scale)
   static const Color primary50 = Color(0xFFE6FAF7);
   static const Color primary100 = Color(0xFFC7F2EC);
@@ -78,4 +83,3 @@ class AppColors {
   static const Color shadowMedium = Color(0x33000000);
   static const Color shadowDark = Color(0x4D000000);
 }
-
