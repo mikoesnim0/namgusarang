@@ -36,6 +36,7 @@ class CouponsScreen extends ConsumerWidget {
                 : '닉네임';
 
     return Scaffold(
+      backgroundColor: AppColors.gray50,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 0,

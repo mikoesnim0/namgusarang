@@ -22,6 +22,7 @@ class FriendRequestsScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: AppColors.gray50,
         appBar: AppBar(
           title: const Text('친구 수락 대기'),
           bottom: TabBar(
@@ -250,4 +251,3 @@ String _timeAgo(DateTime t) {
   if (diff.inDays < 1) return '${diff.inHours}시간 전';
   return '${diff.inDays}일 전';
 }
-

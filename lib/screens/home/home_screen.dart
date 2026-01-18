@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'dart:math' as math;
+
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
 import '../../features/settings/settings_provider.dart';
@@ -14,6 +16,13 @@ import '../../widgets/app_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  String _fmtDate(DateTime d) {
+    final yy = (d.year % 100).toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    return '$yy.$mm.$dd';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,12 +37,16 @@ class HomeScreen extends ConsumerWidget {
         ? docNickname!
         : (authNickname?.isNotEmpty == true)
             ? authNickname!
-            : (settingsNickname?.trim().isNotEmpty == true)
-                ? settingsNickname!.trim()
-                : '닉네임';
+                : (settingsNickname?.trim().isNotEmpty == true)
+                    ? settingsNickname!.trim()
+                    : '닉네임';
+
+    final cycleEnd = DateTime.now().add(Duration(days: home.cycle.daysLeft));
+    final cycleStart = cycleEnd.subtract(const Duration(days: 9));
+    final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.gray50,
       body: Column(
         children: [
           _HomeHeader(
@@ -54,6 +67,41 @@ class HomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('가이드 기능은 추후 연결됩니다.')),
+                        ),
+                        child: Text(
+                          '가이드',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        cycleRange,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('구독관리는 추후 연결됩니다.')),
+                        ),
+                        child: Text(
+                          '구독관리',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   _DaysLeftCard(daysLeft: home.cycle.daysLeft),
                   const SizedBox(height: 12),
                   _SuccessDaysCard(
@@ -70,6 +118,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    margin: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -111,6 +160,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    margin: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -127,6 +177,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    margin: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -292,6 +343,7 @@ class _DaysLeftCard extends StatelessWidget {
     final text = clamped.toString().padLeft(2, '0');
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
       child: Column(
         children: [
           Text('이번 미션 종료까지', style: AppTypography.bodyMedium),
@@ -349,11 +401,21 @@ class _SuccessDaysCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('성공한 날', style: AppTypography.labelLarge),
           const SizedBox(height: 8),
+          Center(
+            child: Text(
+              '10일 중 3일만 목표에 달성 하면 돼요!',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             height: 36,
             child: ListView.separated(
@@ -415,8 +477,13 @@ class _TodayStepsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final kcal = (steps * 0.023).round();
+    final km = steps * 0.00023;
+    final percent = progress * 100;
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -435,43 +502,134 @@ class _TodayStepsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-            child: SizedBox(
-              height: 14,
-              child: Stack(
-                children: [
-                  Container(color: AppColors.gray100),
-                  FractionallySizedBox(
-                    widthFactor: progress,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          _StepProgressBar(
+            steps: steps,
+            goalSteps: goalSteps,
+            progress: progress,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Text(
-                '${_comma(steps)}보',
-                style: AppTypography.bodySmall,
+                '${kcal}kcal/${km.toStringAsFixed(2)}km',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const Spacer(),
               Text(
-                '목표 ${_comma(goalSteps)}보 · ${_percent(progress)}%',
+                '달성률 ',
                 style: AppTypography.bodySmall.copyWith(
                   color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                '${percent.toStringAsFixed(2)}%',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.primary500,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StepProgressBar extends StatelessWidget {
+  const _StepProgressBar({
+    required this.steps,
+    required this.goalSteps,
+    required this.progress,
+  });
+
+  final int steps;
+  final int goalSteps;
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final safeProgress = progress.clamp(0.0, 1.0);
+    const height = 36.0;
+    final radius = height / 2;
+
+    final shoe = Image.asset(
+      'assets/icons/shoe.png',
+      width: 18,
+      height: 18,
+      errorBuilder: (_, __, ___) => const Icon(
+        Icons.directions_walk,
+        size: 18,
+        color: Colors.white,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalW = constraints.maxWidth;
+        final fillW = math.max(height, totalW * safeProgress);
+        final iconLeft = (fillW - 18 - 12).clamp(12.0, totalW - 18 - 12);
+
+        return Stack(
+          children: [
+            Container(
+              height: height,
+              decoration: BoxDecoration(
+                color: AppColors.gray200,
+                borderRadius: BorderRadius.circular(radius),
+              ),
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(
+                '매일 ${_comma(goalSteps)}보 걷기',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(radius),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: fillW,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary500,
+                    borderRadius: BorderRadius.circular(radius),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _comma(steps),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: iconLeft,
+              top: 0,
+              bottom: 0,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: shoe,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

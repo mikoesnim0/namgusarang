@@ -40,6 +40,7 @@ class FriendsScreen extends ConsumerWidget {
     final pendingCount = requests.sent.length + requests.received.length;
 
     return Scaffold(
+      backgroundColor: AppColors.gray50,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         titleSpacing: 0,
