@@ -81,7 +81,7 @@ class AppSettings {
     return const AppSettings(
       profile: ProfileSettings(
         nickname: '닉네임',
-        email: 'abcd@gmail.com',
+        email: '',
         ageRange: AgeRange.forties,
         gender: Gender.female,
       ),
@@ -104,4 +104,3 @@ class AppSettings {
     );
   }
 }
-

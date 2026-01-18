@@ -16,7 +16,7 @@ class PersonalInfoScreen extends ConsumerWidget {
     final stats = ref.watch(personalStatsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('개인 정보')),
+      appBar: AppBar(title: const Text('내 정보 보기')),
       body: SingleChildScrollView(
         padding: AppTheme.screenPadding,
         child: AppCard(
@@ -89,4 +89,3 @@ String _comma(int n) {
   }
   return buf.toString();
 }
-

@@ -14,6 +14,21 @@ import '../../theme/app_colors.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  String _authProviderLabel(dynamic authUser) {
+    try {
+      final providers = (authUser?.providerData as List?)?.cast<dynamic>() ?? [];
+      final ids = providers.map((p) => p.providerId?.toString()).whereType<String>();
+      if (ids.contains('google.com')) return '구글로그인';
+      if (ids.contains('apple.com')) return '애플로그인';
+      if (ids.contains('password')) return '이메일';
+      // Kakao via custom token can vary by setup (custom/oidc/etc). Keep a safe fallback.
+      if (ids.any((id) => id.contains('kakao'))) return '카카오로그인';
+    } catch (_) {
+      // ignore
+    }
+    return '로그인';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsControllerProvider);
@@ -47,17 +62,44 @@ class SettingsScreen extends ConsumerWidget {
             (userDoc?['email'] as String?)?.trim().isNotEmpty == true
                 ? (userDoc?['email'] as String)
                 : (authEmail?.isNotEmpty == true ? authEmail! : settings.profile.email);
+        final providerLabel = _authProviderLabel(authUser);
 
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const CircleAvatar(
-            backgroundColor: AppColors.primary100,
-            child: Icon(Icons.person, color: AppColors.primary700),
+        return InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+          onTap: () => context.push('/my/info'),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AppColors.gray200,
+                child: Icon(Icons.person, color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(nickname, style: AppTypography.bodyLarge),
+                    const SizedBox(height: 2),
+                    Text(
+                      email.trim().isEmpty ? '이메일 미제공' : email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                providerLabel,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-          title: Text(nickname, style: AppTypography.bodyLarge),
-          subtitle: Text(email, style: AppTypography.bodySmall),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/my/profile'),
         );
       },
     );
@@ -83,6 +125,7 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             AppCard(
               padding: const EdgeInsets.all(AppSpacing.paddingMD),
+              margin: EdgeInsets.zero,
               child: header,
             ),
             const SizedBox(height: AppSpacing.paddingXL),
@@ -90,16 +133,15 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.paddingSM),
             AppCard(
               padding: const EdgeInsets.all(AppSpacing.paddingMD),
+              margin: EdgeInsets.zero,
               child: Column(
                 children: [
                   _SettingsTile(
-                    icon: Icons.assignment_ind_outlined,
                     title: '프로필',
                     onTap: () => context.push('/my/profile'),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
-                    icon: Icons.notifications_outlined,
                     title: '알림',
                     onTap: () => context.push('/my/notifications'),
                   ),
@@ -111,10 +153,10 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.paddingSM),
             AppCard(
               padding: const EdgeInsets.all(AppSpacing.paddingMD),
+              margin: EdgeInsets.zero,
               child: Column(
                 children: [
                   _SettingsTile(
-                    icon: Icons.description_outlined,
                     title: '서비스 이용 약관',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +166,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
-                    icon: Icons.privacy_tip_outlined,
                     title: '개인정보 처리 방침',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +175,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
-                    icon: Icons.support_agent_outlined,
                     title: '문의 하기',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +184,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
-                    icon: Icons.person_remove_outlined,
                     title: '탈퇴 하기',
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -161,6 +200,7 @@ class SettingsScreen extends ConsumerWidget {
             // 로그아웃 row (screenshot-like)
             AppCard(
               padding: EdgeInsets.zero,
+              margin: EdgeInsets.zero,
               child: InkWell(
                 onTap: () async {
                   final ok = await showDialog<bool>(
@@ -212,12 +252,10 @@ class SettingsScreen extends ConsumerWidget {
 
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
-    required this.icon,
     required this.title,
     required this.onTap,
   });
 
-  final IconData icon;
   final String title;
   final VoidCallback onTap;
 
@@ -225,7 +263,6 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
       title: Text(title, style: AppTypography.bodyLarge),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,

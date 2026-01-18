@@ -140,6 +140,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   ? (userDoc?['email'] as String)
                   : p.email);
           final emailVerified = authUser?.emailVerified ?? false;
+          final hasEmail = email.trim().isNotEmpty;
           return SingleChildScrollView(
             padding: AppTheme.screenPadding,
             child: Form(
@@ -147,8 +148,55 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Stack(
+                      children: [
+                        const CircleAvatar(
+                          radius: 44,
+                          backgroundColor: AppColors.gray200,
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: InkWell(
+                            borderRadius:
+                                BorderRadius.circular(AppSpacing.radiusFull),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('프로필 사진 업로드는 추후 제공됩니다.'),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary500,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.paddingLG),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    margin: EdgeInsets.zero,
                     child: Column(
                       children: [
                         AppInput(
@@ -194,51 +242,61 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   const SizedBox(height: AppSpacing.paddingMD),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    margin: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text('이메일', style: AppTypography.labelMedium),
                         const SizedBox(height: AppSpacing.paddingSM),
                         Text(
-                          email,
+                          hasEmail ? email : '이메일 미제공',
                           style: AppTypography.bodyMedium,
                         ),
                         const SizedBox(height: AppSpacing.paddingSM),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                emailVerified
-                                    ? '인증 완료'
-                                    : '이메일 인증이 필요합니다',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: emailVerified
-                                      ? AppColors.primary500
-                                      : AppColors.textSecondary,
+                        if (hasEmail)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  emailVerified
+                                      ? '인증 완료'
+                                      : '이메일 인증이 필요합니다',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: emailVerified
+                                        ? AppColors.primary500
+                                        : AppColors.textSecondary,
+                                  ),
                                 ),
                               ),
+                              if (!emailVerified)
+                                TextButton(
+                                  onPressed: () async {
+                                    final user = ref
+                                        .read(authStateProvider)
+                                        .valueOrNull;
+                                    if (user == null) return;
+                                    await user.sendEmailVerification();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            '인증 메일을 보냈습니다. 메일함을 확인해주세요.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: const Text('인증 메일 보내기'),
+                                ),
+                            ],
+                          )
+                        else
+                          Text(
+                            '이메일이 연결되어 있지 않습니다.',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
                             ),
-                            if (!emailVerified)
-                              TextButton(
-                                onPressed: () async {
-                                  final user = ref
-                                      .read(authStateProvider)
-                                      .valueOrNull;
-                                  if (user == null) return;
-                                  await user.sendEmailVerification();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('인증 메일을 보냈습니다. 메일함을 확인해주세요.'),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: const Text('인증 메일 보내기'),
-                              ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),

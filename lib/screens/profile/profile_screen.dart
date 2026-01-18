@@ -77,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.assignment_ind_outlined),
-                    title: Text('개인 정보', style: AppTypography.bodyLarge),
+                    title: Text('내 정보 보기', style: AppTypography.bodyLarge),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/my/info'),
                   ),
@@ -98,4 +98,3 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 }
-
