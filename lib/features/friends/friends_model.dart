@@ -3,11 +3,15 @@ class Friend {
     required this.nickname,
     required this.rewardWon,
     required this.joinedAt,
+    this.totalSteps = 13040,
+    this.dailySteps = 1340,
   });
 
   final String nickname;
   final int rewardWon;
   final DateTime joinedAt;
+  final int totalSteps;
+  final int dailySteps;
 }
 
 class FriendRequest {

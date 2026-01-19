@@ -35,9 +35,27 @@ class FriendsController extends Notifier<List<Friend>> {
   List<Friend> build() {
     final now = DateTime.now();
     return [
-      Friend(nickname: '나혜영', rewardWon: 3000, joinedAt: now),
-      Friend(nickname: '민서', rewardWon: 3000, joinedAt: now.subtract(const Duration(days: 1))),
-      Friend(nickname: '나혜영', rewardWon: 3000, joinedAt: now.subtract(const Duration(days: 2))),
+      Friend(
+        nickname: '나혜영',
+        rewardWon: 3000,
+        totalSteps: 13040,
+        dailySteps: 2100,
+        joinedAt: now,
+      ),
+      Friend(
+        nickname: '민서',
+        rewardWon: 3000,
+        totalSteps: 12240,
+        dailySteps: 1800,
+        joinedAt: now.subtract(const Duration(days: 1)),
+      ),
+      Friend(
+        nickname: '지훈',
+        rewardWon: 9000,
+        totalSteps: 17820,
+        dailySteps: 3560,
+        joinedAt: now.subtract(const Duration(days: 2)),
+      ),
     ];
   }
 
@@ -59,6 +77,8 @@ class FriendsController extends Notifier<List<Friend>> {
 }
 
 class FriendRequestsController extends Notifier<FriendRequestsState> {
+  static final _nicknamePattern = RegExp(r'^[0-9A-Za-z가-힣]{2,12}$');
+
   @override
   FriendRequestsState build() {
     final now = DateTime.now();
@@ -78,6 +98,24 @@ class FriendRequestsController extends Notifier<FriendRequestsState> {
         ),
       ],
     );
+  }
+
+  bool sendRequestByNickname(String nickname) {
+    final trimmed = nickname.trim();
+    if (!_nicknamePattern.hasMatch(trimmed)) return false;
+
+    final already = state.sent.any((r) => r.nickname == trimmed) ||
+        state.received.any((r) => r.nickname == trimmed);
+    if (already) return false;
+
+    final req = FriendRequest(
+      id: 'sent_${DateTime.now().microsecondsSinceEpoch}',
+      nickname: trimmed,
+      requestedAt: DateTime.now(),
+    );
+
+    state = state.copyWith(sent: [req, ...state.sent]);
+    return true;
   }
 
   void cancelSent(String requestId) {
