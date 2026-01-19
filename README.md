@@ -96,9 +96,13 @@ hangookji_namgu/
    - 필드 타입 및 설명
 
 4. **[개발 일정](documents/planning/)**
+   - 프로젝트_추진계획서_v1.0.md
+   - 추진일정_W1-W6.md
+   - 달력형_일정표_v1.0_revised.md
    - 개발일정표_v1.0.md
    - 상세일정표_Gantt_v1.0.md
-   - 달력형_일정표_v1.0.md
+   - 상세작업일정표_Task_Based.md
+   - Day1-2_완료보고서.md
    - 작업로그.md
 
 ### Cursor AI 가이드

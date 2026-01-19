@@ -9,17 +9,20 @@
 
 ### A. 디자인 스샷/피그마
 아래 파일명으로 레포에 넣어두면 “외주처럼” 기준이 고정됩니다.
-- `documents/design/brandia/01_settings.png` (설정/프로필/알림)
-- `documents/design/brandia/02_steps_card.png` (오늘의 걸음 수 카드)
-- `documents/design/brandia/03_home_top.png` (회차/성공한날/홈 상단)
-- `documents/design/brandia/04_friends_list.png` (친구목록 리스트)
-- (추가 예정) `documents/design/brandia/05_food_mapping.png` (칼로리 → 음식 환산표)
+- `documents/design/brandia/02_settings_1.png` (설정/마이 화면)
+- `documents/design/brandia/02_settings_2.png` (프로필 화면)
+- `documents/design/brandia/02_settings_3.png` (설정/마이 화면 변형)
+- `documents/design/brandia/03_my_notice.png` (알림 설정 화면)
+- `documents/design/brandia/01_steps_home_main.png` (홈 - 성공한날/오늘의 걸음 수 카드)
+- `documents/design/brandia/04_friends.png` (친구목록 리스트)
+- (추가 예정) `documents/design/brandia/05_food_icons.png` (칼로리 → 음식 아이콘 시트)
+- (추가 예정) `documents/design/brandia/06_myinfo_stats.png` (내 정보 보기(통계) 화면)
 
 ### B. 앱 리소스(이미지)
 네트워크 제한으로 리소스 다운로드를 자동화할 수 없으니, 아래 경로로 직접 추가가 필요합니다.
 - 카카오 심볼(말풍선) PNG: `assets/icons/kakao_symbol.png`
 - 걸음 “신발” 아이콘 PNG: `assets/icons/shoe.png`
-- 음식 이미지(필요 시): `assets/images/foods/...`
+- 음식 이미지(필요 시): `assets/images/foods/...` (권장: 개별 PNG로 분리)
 
 ---
 
@@ -38,6 +41,9 @@
 - Done:
   - 카카오 디자인 가이드 규정 위반 없음(심볼/색상/레이블)
   - Android/iOS에서 동일한 버튼 크기/여백/라운드로 표시됨
+ - Status:
+   - ✅ UI 구현 완료
+   - ⏳ `assets/icons/kakao_symbol.png` 추가 필요(없으면 fallback 아이콘 표시)
 
 ### 1.2 설정(마이) - 브랜디아 레이아웃 + 버튼 위치
 - Where: `마이(설정)`, `프로필`, `알림`
@@ -47,8 +53,10 @@
   - `로그아웃`은 최하단 단독 Row + 우측에 버전 표시
   - 프로필: 원형 아바타 + “+” 버튼(업로드는 우선순위 최하로 후순위 구현)
 - Done:
-  - 제공 스샷(`01_settings.png`)과 동일한 섹션 구성/순서/여백 느낌
+  - 제공 스샷(`02_settings_1.png`, `02_settings_3.png`)과 동일한 섹션 구성/순서/여백 느낌
   - 로그아웃/탈퇴 위치가 스샷과 동일
+ - Status:
+   - 🟡 레이아웃 1차 반영(추가 픽셀 튜닝 필요)
 
 ### 1.3 홈 - 회차 기간(서버 기준) + 상단/걸음수 카드 UI 픽셀 튜닝
 - Where: `홈`
@@ -60,8 +68,10 @@
   - “성공한 날” 원형 리스트: 성공한 날만 컬러, 나머지 회색
   - “오늘의 걸음 수” 카드: 진행바에 신발 아이콘 + 하단 kcal/km/달성률 표시
 - Done:
-  - 제공 스샷(`02_steps_card.png`, `03_home_top.png`)과 최대한 동일한 타이포/간격/구성
+  - 제공 스샷(`01_steps_home_main.png`)과 최대한 동일한 타이포/간격/구성
   - progress bar/신발 아이콘이 스샷처럼 자연스럽게 정렬(오버플로우 없음)
+ - Status:
+   - 🟡 UI 1차 반영(서버 기준 회차/실측 걸음수 연동 필요)
 
 ### 1.4 내 정보 보기(기존 개인정보) - 문구 변경 + 현재 회차 누적 수치
 - Where: `내 정보 보기` 화면
@@ -71,14 +81,19 @@
   - (추가) 회차 누적 칼로리 → 음식 환산(상위 1개) 표시
 - Done:
   - 현재 회차만 기준으로 누적값이 표시됨(더미→실데이터 연동 단계적)
+ - Status:
+   - 🟡 “내 정보 보기” 문구 변경 완료
+   - ⏳ 통계 카드 UI/데이터 연동 필요
 
 ### 1.5 칼로리 → 음식 환산(회차 누적, 상위 1개)
 - Where: `홈` 또는 `내 정보 보기`
 - What:
   - 회차 누적 소모 칼로리를 입력으로 받아, “음식 1개”로 환산해 표시
-  - 환산 규칙은 스샷(`05_food_mapping.png`)에 따라 테이블로 고정
+  - 환산 규칙은 스샷(`05_food_icons.png` + 별도 환산표) 기준으로 테이블 고정
 - Done:
   - 환산 값이 항상 1개로 표시되고, 기준이 회차 누적임이 명확
+ - Status:
+   - ⏳ 환산표(칼로리→음식) 확정 필요
 
 ### 1.6 친구 목록 - 브랜디아 리스트 형태 + 일일 걸음수
 - Where: `친구목록`
@@ -86,8 +101,11 @@
   - 상단 검색바(닉네임으로 친구 추가) 1개로 통합(버튼 난립 제거)
   - 리스트 카드에 `쿠폰으로 아낀 금액`, `총 걸음 수`, (추가) `일일 걸음수` 표시
 - Done:
-  - 제공 스샷(`04_friends_list.png`)과 동일한 구조
+  - 제공 스샷(`04_friends.png`)과 동일한 구조
   - 1차: 더미 데이터로 UI 완성 → 2차: Firestore 연동
+ - Status:
+   - ✅ UI 1차 완료(더미)
+   - ⏳ Firestore 연동(친구/통계) 필요
 
 ### 1.7 프로필 사진 업로드(최하 우선순위)
 - Where: `프로필`
@@ -95,6 +113,31 @@
   - 선택 업로드, 원형 표시, 기본 아바타 제공
 - Done:
   - 이미지 선택 → 업로드(예: Firebase Storage) → Firestore URL 저장 → 표시
+ - Status:
+   - ⏳ 최하 우선순위(추후)
+
+### 1.8 걸음 수 “실측” 연동(권한/수집/동기화)
+- Where: `홈`, `내 정보 보기`, `친구목록(일일걸음수)`, `서버(Firestore)`
+- What:
+  - 데이터 원천 결정(1안/2안 중 택 1)
+    - 1안(빠름): 센서 기반(Pedometer/CMPedometer) + 로컬 기준으로 오늘 걸음수 계산
+    - 2안(정확): HealthKit(iOS) + Health Connect/Google Fit(Android)에서 “오늘” 걸음수 쿼리
+  - 권한 UX
+    - 최초 진입 시 권한 요청 → 거절 시 “수동 진행(더미)” 또는 “권한 필요 안내”로 대체
+    - 설정 화면에서 권한 재요청/설정 이동 안내
+  - 앱 내 데이터 모델(권장)
+    - `todaySteps`, `totalSteps`, `lastStepUpdateAt`를 `/users/{uid}`에 유지
+    - 일일 집계는 `/users/{uid}/history` 또는 별도 `daily_stats` 서브컬렉션(선택)
+  - 동기화(최소)
+    - 포그라운드: 10~30초 주기(또는 화면 진입/복귀 시)로 Firestore 업데이트(디바운스)
+    - 백그라운드: MVP에서는 “앱 열었을 때 갱신”으로 시작(추후 WorkManager/BackgroundTasks)
+- Done:
+  - Android/iOS에서 “오늘 걸음 수”가 실제 값으로 표시됨(허용 오차 정의)
+  - 권한 거절/미지원 기기에서도 앱이 깨지지 않고 대체 UI가 표시됨
+  - Firestore에 일일/누적 값이 정상 반영되고 친구 화면의 “일일 걸음수”가 연결됨
+  - (스토어 심사 대비) iOS `Info.plist`/Android 권한 설명 문구가 준비됨
+ - Status:
+  - ⏳ 구현 필요(다음 우선순위)
 
 ---
 
@@ -113,7 +156,7 @@
 - 목표: “내 정보 보기”에서 회차 누적 데이터가 한눈에 보이도록
 
 ### Phase 4 (2~4일): 친구 목록 UI 교체 + 일일 걸음수 표시
-- 목표: 스샷 `04_friends_list.png` 형태로 교체 후, 2차에 실데이터 연동
+- 목표: 스샷 `04_friends.png` 형태로 교체 후, 2차에 실데이터 연동
 
 ### Phase 5 (추후): 프로필 사진 업로드
 
@@ -124,6 +167,5 @@
 아래는 구현 전에 “기준이 없으면 계속 흔들리는” 영역입니다.
 - 회차 시작일 서버 기준: `/app_config/missionCycle` 같은 Firestore 문서로 고정할지?
 - kcal/km 변환식: 디자이너 스샷에 맞춘 상수(고정)로 갈지, 사용자 신체정보 기반으로 갈지?
-- 친구 ‘일일 걸음수’ 데이터 원천: HealthKit/Google Fit 기반인지, 서버 집계인지?
-- 친구 추가 UX: 검색바 1개로 통합 여부 최종 확정
-
+- 친구 ‘일일 걸음수’ 데이터 원천: 1) 센서 기반(자체 집계) 2) Health/Health Connect 기반(정확) 3) 서버 집계(권한 최소화)
+- kcal → 음식 환산표: “몇 kcal = 음식 1개” 테이블(정확한 수치) 확정 필요
