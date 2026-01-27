@@ -622,19 +622,51 @@ class _StepProgressBar extends StatelessWidget {
     const height = 36.0;
     final radius = height / 2;
 
-    final shoe = Image.asset(
-      'assets/icons/shoe.png',
-      width: 18,
-      height: 18,
-      errorBuilder: (_, __, ___) =>
-          const Icon(Icons.directions_walk, size: 18, color: Colors.white),
-    );
+    // UX rules:
+    // - Before walking starts (< 20 steps): gray bar + black shoe icon.
+    // - After walking starts (>= 20): green fill + shoe icon inside the fill.
+    // - Avoid overlap: until 1500 steps, show the step count to the right of the shoe.
+    //   After that, keep the current style (step count pinned at the left).
+    final isStarted = steps >= 20;
+    final showStepsOnLeft = steps >= 1500;
+    final shoe = isStarted
+        ? Image.asset(
+            'assets/icons/shoe.png',
+            width: 18,
+            height: 18,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.directions_walk,
+              size: 18,
+              color: Colors.white,
+            ),
+          )
+        : const Icon(
+            Icons.directions_walk,
+            size: 18,
+            color: Colors.black87,
+          );
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalW = constraints.maxWidth;
-        final fillW = math.max(height, totalW * safeProgress);
+        final fillW = math.max(height, totalW * (isStarted ? safeProgress : 0));
         final iconLeft = (fillW - 18 - 12).clamp(12.0, totalW - 18 - 12);
+        final stepsText = _comma(steps);
+        final stepsTextStyle = AppTypography.bodyMedium.copyWith(
+          color: isStarted ? Colors.white : AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
+        );
+
+        final stepsPainter = TextPainter(
+          text: TextSpan(text: stepsText, style: stepsTextStyle),
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+        )..layout(maxWidth: totalW);
+        final stepsTextW = stepsPainter.width;
+
+        final stepsRightOfShoeLeft = (iconLeft + 18 + 8)
+            .clamp(12.0, totalW - stepsTextW - 12.0)
+            .toDouble();
 
         return Stack(
           children: [
@@ -661,27 +693,38 @@ class _StepProgressBar extends StatelessWidget {
                   width: fillW,
                   height: height,
                   decoration: BoxDecoration(
-                    color: AppColors.primary500,
+                    color: isStarted ? AppColors.primary500 : AppColors.gray200,
                     borderRadius: BorderRadius.circular(radius),
                   ),
                 ),
               ),
             ),
-            Positioned(
-              left: 16,
-              top: 0,
-              bottom: 0,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _comma(steps),
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+            if (showStepsOnLeft)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(stepsText, style: stepsTextStyle),
+                ),
+              )
+            else
+              Positioned(
+                left: stepsRightOfShoeLeft,
+                top: 0,
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    stepsText,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
-            ),
             Positioned(
               left: iconLeft,
               top: 0,
