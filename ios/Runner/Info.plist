@@ -70,5 +70,9 @@
 		<string>kakaolink</string>
 		<string>kakaotalk</string>
 	</array>
+	<key>NSMotionUsageDescription</key>
+	<string>걸음 수 측정을 위해 동작 및 피트니스 접근이 필요합니다.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>내 주변 매장 표시를 위해 위치 접근이 필요합니다.</string>
 </dict>
 </plist>

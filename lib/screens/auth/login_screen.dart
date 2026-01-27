@@ -38,7 +38,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).signInWithEmail(
+    await ref
+        .read(authControllerProvider.notifier)
+        .signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -72,60 +74,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _passwordController.clear();
           context.go('/home');
         },
-                error: (e, st) {
-                  if (!mounted) return;
-                  final rootContext = Navigator.of(context, rootNavigator: true).context;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(friendlyAuthError(e)),
-                    action: kDebugMode
-                        ? SnackBarAction(
-                            label: 'DETAILS',
-                            onPressed: () async {
-                              if (!rootContext.mounted) return;
-                              final details = debugAuthErrorDetails(e, st);
-                              await showDialog<void>(
-                                context: rootContext,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Auth error details'),
-                          content: SingleChildScrollView(
-                            child: SelectableText(details),
+        error: (e, st) {
+          if (!mounted) return;
+          final rootContext = Navigator.of(
+            context,
+            rootNavigator: true,
+          ).context;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(friendlyAuthError(e)),
+              action: kDebugMode
+                  ? SnackBarAction(
+                      label: 'DETAILS',
+                      onPressed: () async {
+                        if (!rootContext.mounted) return;
+                        final details = debugAuthErrorDetails(e, st);
+                        await showDialog<void>(
+                          context: rootContext,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Auth error details'),
+                            content: SingleChildScrollView(
+                              child: SelectableText(details),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: details),
+                                  );
+                                  if (!context.mounted) return;
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Copy & Close'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Close'),
+                              ),
+                            ],
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () async {
-                                await Clipboard.setData(
-                                  ClipboardData(text: details),
-                                );
-                                if (!context.mounted) return;
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Copy & Close'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Close'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  )
-                : null,
-          ));
+                        );
+                      },
+                    )
+                  : null,
+            ),
+          );
         },
       );
     });
 
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
-    const kakaoKey =
-        String.fromEnvironment('KAKAO_NATIVE_APP_KEY', defaultValue: '');
+    const kakaoKey = String.fromEnvironment(
+      'KAKAO_NATIVE_APP_KEY',
+      defaultValue: '',
+    );
     final isKakaoSupported =
         (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) &&
-            kakaoKey.isNotEmpty;
+        kakaoKey.isNotEmpty;
     final isGoogleSupported =
         kIsWeb || defaultTargetPlatform != TargetPlatform.macOS;
-    final isAppleSupported = !kIsWeb &&
+    final isAppleSupported =
+        !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS);
 
@@ -149,8 +159,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         height: 80,
                         decoration: BoxDecoration(
                           color: AppColors.primary50,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusLG),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusLG,
+                          ),
                         ),
                         child: const Icon(
                           Icons.place,
@@ -159,10 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.paddingLG),
-                      Text(
-                        'Walker홀릭',
-                        style: AppTypography.h2,
-                      ),
+                      Text('Walker홀릭', style: AppTypography.h2),
                       const SizedBox(height: AppSpacing.paddingSM),
                       Text(
                         '걸으며 쿠폰을 얻고 사용해요',
@@ -255,21 +263,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Google 로그인
                 SizedBox(
-                  height: 48,
+                  height: 52,
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed:
-                        (isGoogleSupported && !isLoading)
-                            ? () {
-                                _handleGoogleLogin();
-                              }
-                            : null,
+                    onPressed: (isGoogleSupported && !isLoading)
+                        ? () {
+                            _handleGoogleLogin();
+                          }
+                        : null,
                     style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.paddingSM,
+                        horizontal: AppSpacing.paddingMD,
+                      ),
                       backgroundColor: Colors.white,
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: AppColors.gray200),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMD,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -282,10 +296,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           fit: BoxFit.contain,
                         ),
                         const SizedBox(width: AppSpacing.paddingSM),
-                        Text(
-                          'Google로 계속하기',
-                          style: AppTypography.bodyMedium,
-                        ),
+                        Text('Google로 계속하기', style: AppTypography.bodyMedium),
                       ],
                     ),
                   ),
@@ -306,7 +317,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           _handleAppleLogin();
                         },
                         style: SignInWithAppleButtonStyle.black,
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMD,
+                        ),
                         text: 'Apple로 계속하기',
                       ),
                     ),

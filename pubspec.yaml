@@ -61,10 +61,13 @@ dependencies:
   shared_preferences: ^2.3.4
   url_launcher: ^6.3.0
   share_plus: ^10.0.0
+  flutter_naver_map: ^1.4.4
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -87,6 +90,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icons/
+    - assets/icons/foods/
     - assets/images/
   fonts:
     - family: Pretendard
@@ -117,6 +121,11 @@ flutter:
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icons/Walkerholic_icon.png
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a

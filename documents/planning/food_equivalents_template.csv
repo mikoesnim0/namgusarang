@@ -1,0 +1,42 @@
+food_id,kcal,name_eg,name_kr,amount,icon
+1,20,Gim,조미김,1,Gim_ic
+2,30,Almonds,아몬드,4,Almonds_ic
+3,50,Instant_Coffee,믹스커피,1,Instant_Coffee_ic
+4,60,Mandarin,귤,1,Mandarin_ic
+5,70,String_Cheese,스트링치즈,1,String_Cheese_ic
+6,80,Boiled_Egg,삶은 계란,1,Boiled_Egg_ic
+7,90,Yogurt_Drink,요구르트,1,Yogurt_Drink_ic
+8,100,Banana,바나나,1,Banana_ic
+9,120,Slice_of_Bread,식빵,1,Slice_of_Bread_ic
+10,140,Coke,콜라,250,Coke_ic
+11,150,Macaron,마카롱,1,Macaron_ic
+12,160,Potato_Chips,감자칩,10,Potato_Chips_ic
+13,170,Choco_Pie,초코파이,1,Choco_Pie_ic
+14,190,Sweet_Potato,고구마,1,Sweet_Potato_ic
+15,200,Tuna_Mayo,참치마요 삼각김밥,1,Tuna_Mayo_ic
+16,250,Cheese_Pizza,치즈 피자,1,Cheese_Pizza_ic
+17,300,Steamed_Rice,쌀밥,210g,Steamed_Rice_ic
+18,350,Fish-shaped_Pastry,붕어빵,3,Fish-shaped_Pastry_ic
+19,400,Cheeseburger,치즈버거,1,Cheeseburger_ic
+20,450,HamCheese,햄치즈 샌드위치,1,HamCheese_ic
+21,500,Ramen,라면,1,Ramen_ic
+22,550,Big_Mac,빅맥,1,Big_Mac_ic
+23,600,Jajangmyeon,짜장면,1,Jajangmyeon_ic
+24,650,Pork_Cutlet,돈까스,1,Pork_Cutlet_ic
+25,700,Jeyuk_Deopbab,제육덮밥,1,Jeyuk_Deopbab_ic
+26,750,Jjamppong,짬뽕,1,Jjamppong_ic
+27,800,Samgyeopsoju,삼겹살소주,1인분반병,Samgyeopsoju_ic
+28,850,Carbonara,까르보나라,1,Carbonara_ic
+29,900,Burger_Meal,햄버거 세트,1,Burger_Meal_ic
+30,950,Malatang,마라탕,1,Malatang_ic
+31,1000,Chimeak,치맥,힌마리1잔,Chimeak_ic
+32,1500,Combination_Pizza,콤비네이션 피자 L,1,Combination_Pizza_L_ic
+33,2400,Box_of_Donuts,도넛 박스,12개입,Box_of_Donuts_ic
+34,3000,3_Chimeaks,치맥 3세트,3,Chimeak_ic
+35,3800,Big_Mac,빅맥 7개,7,Big_Mac_ic
+36,5000,10_Ramens,라면 10봉지,10,Ramen_ic
+37,6000,6_Jajangmyeon,짜장면10그릇,10,Jajangmyeon_ic
+38,7000,7_Chimeaks,치맥 7세트,7,Chimeak_ic
+39,8000,20_Cheeseburger,치즈버거 20개,20,Cheeseburger_ic
+40,9000,10_Burger_Meals,햄버거 세트 10개,10,Burger_Meal_ic
+41,10000,20_Ramens,라면 20봉지,20,Ramen_ic

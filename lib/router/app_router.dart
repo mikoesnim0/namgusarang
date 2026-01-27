@@ -8,17 +8,16 @@ import '../screens/coupons/coupons_screen.dart';
 import '../screens/friends/friend_requests_screen.dart';
 import '../screens/friends/friends_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/map/naver_map_debug_screen.dart';
 import '../screens/profile/personal_info_screen.dart';
 import '../screens/settings/connect_program_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/settings/profile_settings_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/walker/walker_tracking_screen.dart';
 import 'main_shell.dart';
 
-CustomTransitionPage<void> _slidePage({
-  required Widget child,
-  LocalKey? key,
-}) {
+CustomTransitionPage<void> _slidePage({required Widget child, LocalKey? key}) {
   return CustomTransitionPage<void>(
     key: key,
     child: child,
@@ -29,10 +28,7 @@ CustomTransitionPage<void> _slidePage({
         begin: const Offset(1, 0),
         end: Offset.zero,
       ).chain(CurveTween(curve: Curves.easeOutCubic));
-      return SlideTransition(
-        position: animation.drive(tween),
-        child: child,
-      );
+      return SlideTransition(position: animation.drive(tween), child: child);
     },
   );
 }
@@ -54,22 +50,22 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
+    GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
     GoRoute(
-      path: '/',
-      builder: (context, state) => const SplashScreen(),
+      path: '/walker',
+      pageBuilder: (context, state) =>
+          _slidePage(key: state.pageKey, child: const WalkerTrackingScreen()),
     ),
     GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignupScreen(),
+      path: '/map',
+      pageBuilder: (context, state) =>
+          _slidePage(key: state.pageKey, child: const NaverMapDebugScreen()),
     ),
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) => MainShell(
-        navigationShell: navigationShell,
-      ),
+      builder: (context, state, navigationShell) =>
+          MainShell(navigationShell: navigationShell),
       branches: [
         StatefulShellBranch(
           routes: [
@@ -105,17 +101,13 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/my',
-      pageBuilder: (context, state) => _slidePage(
-        key: state.pageKey,
-        child: const SettingsScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _slidePage(key: state.pageKey, child: const SettingsScreen()),
       routes: [
         GoRoute(
           path: 'info',
-          pageBuilder: (context, state) => _slidePage(
-            key: state.pageKey,
-            child: const PersonalInfoScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              _slidePage(key: state.pageKey, child: const PersonalInfoScreen()),
         ),
         GoRoute(
           path: 'profile',

@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import 'dart:math' as math;
 
+import '../../features/foods/food_equivalents.dart';
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
+import '../../features/places/place.dart';
+import '../../features/places/places_provider.dart';
+import '../../features/steps/steps_provider.dart';
+import '../../features/steps/steps_repository.dart';
+import '../../features/steps/steps_sync_provider.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
@@ -26,6 +34,13 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<int>>(todayStepsProvider, (_, next) {
+      final steps = next.valueOrNull;
+      if (steps == null) return;
+      ref.read(homeControllerProvider.notifier).setTodaySteps(steps);
+    });
+    ref.watch(stepsSyncControllerProvider);
+
     final home = ref.watch(homeControllerProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -36,14 +51,18 @@ class HomeScreen extends ConsumerWidget {
     final nickname = (docNickname?.isNotEmpty == true)
         ? docNickname!
         : (authNickname?.isNotEmpty == true)
-            ? authNickname!
-                : (settingsNickname?.trim().isNotEmpty == true)
-                    ? settingsNickname!.trim()
-                    : '닉네임';
+        ? authNickname!
+        : (settingsNickname?.trim().isNotEmpty == true)
+        ? settingsNickname!.trim()
+        : '닉네임';
 
     final cycleEnd = DateTime.now().add(Duration(days: home.cycle.daysLeft));
     final cycleStart = cycleEnd.subtract(const Duration(days: 9));
     final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
+
+    final permissionStatus = ref
+        .watch(stepsPermissionStatusProvider)
+        .valueOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -102,6 +121,20 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  if (permissionStatus == StepsPermissionStatus.denied ||
+                      permissionStatus == StepsPermissionStatus.restricted) ...[
+                    _StepsPermissionCard(
+                      onGrant: () async {
+                        final ok = await ref
+                            .read(stepsRepositoryProvider)
+                            .requestPermission();
+                        if (!context.mounted) return;
+                        ref.invalidate(stepsPermissionStatusProvider);
+                        if (ok) ref.invalidate(todayStepsProvider);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   _DaysLeftCard(daysLeft: home.cycle.daysLeft),
                   const SizedBox(height: 12),
                   _SuccessDaysCard(
@@ -115,6 +148,22 @@ class HomeScreen extends ConsumerWidget {
                     remainingSteps: home.remainingSteps,
                     progress: home.progress,
                   ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => context.go('/walker'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary500,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: AppSpacing.paddingMD,
+                      ),
+                    ),
+                    child: const Text('Walker 모니터 열기'),
+                  ),
+                  _CouponPlacesMapCard(
+                    placesAsync: ref.watch(activePlacesProvider),
+                    onOpenFullMap: () => context.go('/map'),
+                  ),
                   const SizedBox(height: 12),
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
@@ -124,11 +173,15 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         Text('오늘의 미션', style: AppTypography.labelLarge),
                         const SizedBox(height: AppSpacing.paddingSM),
-                        Text(home.mission.title, style: AppTypography.bodyLarge),
+                        Text(
+                          home.mission.title,
+                          style: AppTypography.bodyLarge,
+                        ),
                         const SizedBox(height: AppSpacing.paddingSM),
                         ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusFull),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusFull,
+                          ),
                           child: LinearProgressIndicator(
                             value: home.progress,
                             minHeight: 8,
@@ -250,10 +303,7 @@ class _HomeHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            AppColors.brandTeal,
-            AppColors.brandSky,
-          ],
+          colors: [AppColors.brandTeal, AppColors.brandSky],
         ),
       ),
       child: SafeArea(
@@ -296,8 +346,10 @@ class _HomeHeader extends StatelessWidget {
                       const CircleAvatar(
                         radius: 16,
                         backgroundColor: AppColors.gray200,
-                        child:
-                            Icon(Icons.person, color: AppColors.textSecondary),
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       ConstrainedBox(
@@ -320,8 +372,10 @@ class _HomeHeader extends StatelessWidget {
                 child: IconButton(
                   tooltip: '설정',
                   onPressed: onSettingsTap,
-                  icon:
-                      const Icon(Icons.settings, color: AppColors.textOnPrimary),
+                  icon: const Icon(
+                    Icons.settings,
+                    color: AppColors.textOnPrimary,
+                  ),
                 ),
               ),
             ],
@@ -389,10 +443,7 @@ class _DigitBox extends StatelessWidget {
 }
 
 class _SuccessDaysCard extends StatelessWidget {
-  const _SuccessDaysCard({
-    required this.milestones,
-    required this.completed,
-  });
+  const _SuccessDaysCard({required this.milestones, required this.completed});
 
   final List<int> milestones;
   final List<int> completed;
@@ -480,6 +531,7 @@ class _TodayStepsCard extends StatelessWidget {
     final kcal = (steps * 0.023).round();
     final km = steps * 0.00023;
     final percent = progress * 100;
+    final foodEquivalent = suggestFoodEquivalentForKcal(kcal);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
@@ -487,9 +539,7 @@ class _TodayStepsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(
-            child: Text('오늘의 걸음 수', style: AppTypography.labelLarge),
-          ),
+          Center(child: Text('오늘의 걸음 수', style: AppTypography.labelLarge)),
           const SizedBox(height: 4),
           Center(
             child: Text(
@@ -509,26 +559,42 @@ class _TodayStepsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${kcal}kcal/${km.toStringAsFixed(2)}km',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (foodEquivalent != null && kcal > 0) ...[
+                      _SmallFoodEquivalentLine(foodEquivalent),
+                      const SizedBox(width: 10),
+                    ],
+                    Text(
+                      '${kcal}kcal/${km.toStringAsFixed(2)}km',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                '달성률 ',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Text(
-                '${percent.toStringAsFixed(2)}%',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.primary500,
-                  fontWeight: FontWeight.w700,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '달성률 ',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    '${percent.toStringAsFixed(2)}%',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.primary500,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -559,11 +625,8 @@ class _StepProgressBar extends StatelessWidget {
       'assets/icons/shoe.png',
       width: 18,
       height: 18,
-      errorBuilder: (_, __, ___) => const Icon(
-        Icons.directions_walk,
-        size: 18,
-        color: Colors.white,
-      ),
+      errorBuilder: (_, __, ___) =>
+          const Icon(Icons.directions_walk, size: 18, color: Colors.white),
     );
 
     return LayoutBuilder(
@@ -622,14 +685,350 @@ class _StepProgressBar extends StatelessWidget {
               left: iconLeft,
               top: 0,
               bottom: 0,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: shoe,
-              ),
+              child: Align(alignment: Alignment.centerLeft, child: shoe),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _SmallFoodEquivalentLine extends StatelessWidget {
+  const _SmallFoodEquivalentLine(this.result);
+
+  final FoodEquivalentResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          result.food.iconAssetPath,
+          width: 14,
+          height: 14,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.restaurant,
+            size: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '${result.food.nameKr} × ${result.servings}',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CouponPlacesMapCard extends StatelessWidget {
+  const _CouponPlacesMapCard({
+    required this.placesAsync,
+    required this.onOpenFullMap,
+  });
+
+  final AsyncValue<List<Place>> placesAsync;
+  final VoidCallback onOpenFullMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text('쿠폰 사용 가능한 매장 표시', style: AppTypography.bodySmall),
+              const Spacer(),
+              TextButton(
+                onPressed: onOpenFullMap,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary500,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                ),
+                child: const Text('지도 크게 보기'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 200,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+              child: placesAsync.when(
+                data: (places) => _PlacesMiniMap(places: places),
+                loading: () => Container(
+                  color: AppColors.gray100,
+                  alignment: Alignment.center,
+                  child: const CircularProgressIndicator(),
+                ),
+                error: (e, _) => Container(
+                  color: AppColors.gray100,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                  child: Text(
+                    'places 로드 실패: $e',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlacesMiniMap extends StatefulWidget {
+  const _PlacesMiniMap({required this.places});
+
+  final List<Place> places;
+
+  @override
+  State<_PlacesMiniMap> createState() => _PlacesMiniMapState();
+}
+
+class _PlacesMiniMapState extends State<_PlacesMiniMap> {
+  NaverMapController? _controller;
+  String _lastSignature = '';
+  bool _isRequestingLocation = false;
+  NOverlayImage? _placeMarkerIcon;
+
+  @override
+  void didUpdateWidget(covariant _PlacesMiniMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncMarkers();
+  }
+
+  Future<void> _syncMarkers() async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    final signature = widget.places.map((p) => p.id).join('|');
+    if (signature == _lastSignature) return;
+    _lastSignature = signature;
+
+    await controller.clearOverlays(type: NOverlayType.marker);
+
+    _placeMarkerIcon ??= await _buildPlaceMarkerIcon(context);
+
+    final overlays = <NAddableOverlay>{};
+    for (final p in widget.places) {
+      if (!p.hasCoupons) continue; // MVP: only show coupon-enabled stores.
+      overlays.add(
+        NMarker(
+          id: p.id,
+          position: NLatLng(p.lat, p.lng),
+          icon: _placeMarkerIcon,
+          anchor: NPoint.relativeCenter,
+          // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
+          // Convert physical px -> logical px (dp) so it looks consistent across devices.
+          size: const Size(49 / 3.0, 49 / 3.0),
+          caption: NOverlayCaption(text: p.name),
+        ),
+      );
+    }
+    if (overlays.isNotEmpty) {
+      await controller.addOverlayAll(overlays);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final target = widget.places.isNotEmpty
+        ? NLatLng(widget.places.first.lat, widget.places.first.lng)
+        : const NLatLng(35.1595, 129.0756);
+
+    return Stack(
+      children: [
+        NaverMap(
+          options: NaverMapViewOptions(
+            // We use an explicit consent flow before requesting location permission.
+            locationButtonEnable: false,
+            initialCameraPosition: NCameraPosition(target: target, zoom: 14),
+          ),
+          onMapReady: (controller) async {
+            _controller = controller;
+            await _syncMarkers();
+          },
+        ),
+        Positioned(
+          right: 12,
+          bottom: 12,
+          child: ElevatedButton.icon(
+            onPressed:
+                _isRequestingLocation ? null : () => _handleMyLocationTap(context),
+            icon: const Icon(Icons.my_location, size: 18),
+            label: const Text('현 위치'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.paddingMD,
+                vertical: 8,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleMyLocationTap(BuildContext context) async {
+    setState(() => _isRequestingLocation = true);
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        await Geolocator.openLocationSettings();
+      }
+
+      var perm = await Geolocator.checkPermission();
+
+      // Only show the consent dialog when permission isn't already granted.
+      if (perm != LocationPermission.always &&
+          perm != LocationPermission.whileInUse) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('위치 접근 동의'),
+            content: const Text('현 위치를 알고 싶으면 동의해주세요.\n동의하십니까?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('동의'),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) return;
+      }
+
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+
+      if (perm == LocationPermission.deniedForever) {
+        if (!context.mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('권한 필요'),
+            content: const Text('위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('닫기'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openAppSettings();
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                },
+                child: const Text('설정 열기'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      if (perm != LocationPermission.always &&
+          perm != LocationPermission.whileInUse) {
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+
+      final controller = _controller;
+      if (controller == null) return;
+
+      await _setMyLocationOverlay(
+        controller,
+        NLatLng(pos.latitude, pos.longitude),
+      );
+
+      await controller.updateCamera(
+        NCameraUpdate.scrollAndZoomTo(
+          target: NLatLng(pos.latitude, pos.longitude),
+          zoom: 15,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRequestingLocation = false);
+    }
+  }
+
+  Future<void> _setMyLocationOverlay(
+    NaverMapController controller,
+    NLatLng position,
+  ) async {
+    final overlay = controller.getLocationOverlay();
+    // Use the native accuracy circle as a small "red dot" to avoid
+    // any custom image rendering issues in the mini-map.
+    overlay.setIconAlpha(0);
+    overlay.setSubIconAlpha(0);
+    overlay.setAnchor(NPoint.relativeCenter);
+    overlay.setCircleColor(Colors.red.shade600);
+    overlay.setCircleRadius(6);
+    overlay.setCircleOutlineColor(Colors.white);
+    overlay.setCircleOutlineWidth(2);
+    overlay.setIsVisible(true);
+    overlay.setPosition(position);
+  }
+
+  Future<NOverlayImage> _buildPlaceMarkerIcon(BuildContext context) async {
+    return NOverlayImage.fromWidget(
+      context: context,
+      // 49px/31px are physical pixels @ ~3.0 DPR.
+      size: const Size(49 / 3.0, 49 / 3.0),
+      widget: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer ring: 49px, 47% opacity (#10C4AE @ 0.47)
+          Container(
+            width: 49 / 3.0,
+            height: 49 / 3.0,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0x7810C4AE), // ~47% alpha
+            ),
+          ),
+          // Inner dot: 31px, solid #10C4AE
+          Container(
+            width: 31 / 3.0,
+            height: 31 / 3.0,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF10C4AE),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -666,7 +1065,9 @@ class _MissionTile extends StatelessWidget {
         children: [
           Icon(
             m.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: m.isCompleted ? AppColors.primary500 : AppColors.textSecondary,
+            color: m.isCompleted
+                ? AppColors.primary500
+                : AppColors.textSecondary,
           ),
           const SizedBox(width: 10),
           Icon(icon, color: AppColors.textSecondary, size: 20),
@@ -703,3 +1104,38 @@ String _comma(int value) {
 }
 
 String _percent(double value) => (value * 100).toStringAsFixed(1);
+
+class _StepsPermissionCard extends StatelessWidget {
+  const _StepsPermissionCard({required this.onGrant});
+
+  final VoidCallback onGrant;
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
+      child: Row(
+        children: [
+          const Icon(Icons.directions_walk, color: AppColors.primary500),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '걸음 수 측정을 위해 활동 권한이 필요합니다.',
+              style: AppTypography.bodySmall,
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: onGrant,
+            child: Text(
+              '권한 허용',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.primary500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

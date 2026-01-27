@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
@@ -11,8 +12,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Kakao SDK init (use --dart-define=KAKAO_NATIVE_APP_KEY=...)
-  const kakaoKey =
-      String.fromEnvironment('KAKAO_NATIVE_APP_KEY', defaultValue: '');
+  const kakaoKey = String.fromEnvironment(
+    'KAKAO_NATIVE_APP_KEY',
+    defaultValue: '',
+  );
   if (kakaoKey.isNotEmpty) {
     KakaoSdk.init(nativeAppKey: kakaoKey);
   }
@@ -20,11 +23,10 @@ void main() async {
   // Firebase 초기화
   await _initFirebaseIfSupported();
 
-  runApp(
-    const ProviderScope(
-      child: NamguApp(),
-    ),
-  );
+  // Naver Map SDK init (use --dart-define=NAVER_MAP_CLIENT_ID=...)
+  await _initNaverMapIfSupported();
+
+  runApp(const ProviderScope(child: NamguApp()));
 }
 
 Future<void> _initFirebaseIfSupported() async {
@@ -48,7 +50,8 @@ Future<void> _initFirebaseIfSupported() async {
     // Firebase Apple App ID는 macOS에서도 ':ios:' 형태로 보일 수 있습니다.
     // 문자열 패턴만으로 "misconfiguration"을 단정하면 macOS에서 Firebase init 자체를 막게 되므로,
     // 여기서는 단순 경고만 남기고 실제 성공/실패는 init/auth 결과로 판단합니다.
-    if (macosAppId.isNotEmpty && macosAppId == DefaultFirebaseOptions.ios.appId) {
+    if (macosAppId.isNotEmpty &&
+        macosAppId == DefaultFirebaseOptions.ios.appId) {
       debugPrint(
         'Firebase misconfiguration: macOS is using an iOS GOOGLE_APP_ID ($macosAppId). '
         'This can be OK if you intentionally share the same Firebase app across Apple platforms. '
@@ -63,6 +66,30 @@ Future<void> _initFirebaseIfSupported() async {
     );
   } catch (e) {
     debugPrint('Firebase init skipped/failed: $e');
+  }
+}
+
+Future<void> _initNaverMapIfSupported() async {
+  if (kIsWeb) return;
+  final platform = defaultTargetPlatform;
+  final isSupported =
+      platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+  if (!isSupported) return;
+
+  const clientId = String.fromEnvironment(
+    'NAVER_MAP_CLIENT_ID',
+    defaultValue: 'x7gr6ehva7',
+  );
+
+  try {
+    await FlutterNaverMap().init(
+      clientId: clientId.isEmpty ? null : clientId,
+      onAuthFailed: (ex) {
+        debugPrint('NaverMap auth failed: ${ex.message}');
+      },
+    );
+  } catch (e) {
+    debugPrint('NaverMap init skipped/failed: $e');
   }
 }
 
