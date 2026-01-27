@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/places/place.dart';
 import '../../features/places/places_provider.dart';
 import '../../theme/app_spacing.dart';
+import '../../widgets/place_info_popup.dart';
 
 class NaverMapDebugScreen extends ConsumerStatefulWidget {
   const NaverMapDebugScreen({super.key});
@@ -21,6 +22,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
   String _lastSignature = '';
   bool _isRequestingLocation = false;
   NOverlayImage? _placeMarkerIcon;
+  Place? _selectedPlace;
 
   Future<void> _syncMarkers(List<Place> places) async {
     final controller = _controller;
@@ -36,17 +38,22 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
 
     final overlays = <NAddableOverlay>{};
     for (final p in places) {
+      final marker = NMarker(
+        id: p.id,
+        position: NLatLng(p.lat, p.lng),
+        icon: _placeMarkerIcon,
+        anchor: NPoint.relativeCenter,
+        // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
+        // Convert physical px -> logical px (dp) so it looks consistent across devices.
+        size: const Size(49 / 3.0, 49 / 3.0),
+        caption: NOverlayCaption(text: p.name),
+      );
+      marker.setOnTapListener((_) {
+        if (!mounted) return;
+        setState(() => _selectedPlace = p);
+      });
       overlays.add(
-        NMarker(
-          id: p.id,
-          position: NLatLng(p.lat, p.lng),
-          icon: _placeMarkerIcon,
-          anchor: NPoint.relativeCenter,
-          // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
-          // Convert physical px -> logical px (dp) so it looks consistent across devices.
-          size: const Size(49 / 3.0, 49 / 3.0),
-          caption: NOverlayCaption(text: p.name),
-        ),
+        marker,
       );
     }
     if (overlays.isNotEmpty) {
@@ -103,6 +110,16 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                   }
                 },
               ),
+              if (_selectedPlace != null)
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 64,
+                  child: PlaceInfoPopup(
+                    place: _selectedPlace!,
+                    onClose: () => setState(() => _selectedPlace = null),
+                  ),
+                ),
               Positioned(
                 right: 12,
                 bottom: 12,

@@ -21,6 +21,7 @@ import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/place_info_popup.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -807,6 +808,7 @@ class _PlacesMiniMapState extends State<_PlacesMiniMap> {
   String _lastSignature = '';
   bool _isRequestingLocation = false;
   NOverlayImage? _placeMarkerIcon;
+  Place? _selectedPlace;
 
   @override
   void didUpdateWidget(covariant _PlacesMiniMap oldWidget) {
@@ -829,17 +831,22 @@ class _PlacesMiniMapState extends State<_PlacesMiniMap> {
     final overlays = <NAddableOverlay>{};
     for (final p in widget.places) {
       if (!p.hasCoupons) continue; // MVP: only show coupon-enabled stores.
+      final marker = NMarker(
+        id: p.id,
+        position: NLatLng(p.lat, p.lng),
+        icon: _placeMarkerIcon,
+        anchor: NPoint.relativeCenter,
+        // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
+        // Convert physical px -> logical px (dp) so it looks consistent across devices.
+        size: const Size(49 / 3.0, 49 / 3.0),
+        caption: NOverlayCaption(text: p.name),
+      );
+      marker.setOnTapListener((_) {
+        if (!mounted) return;
+        setState(() => _selectedPlace = p);
+      });
       overlays.add(
-        NMarker(
-          id: p.id,
-          position: NLatLng(p.lat, p.lng),
-          icon: _placeMarkerIcon,
-          anchor: NPoint.relativeCenter,
-          // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
-          // Convert physical px -> logical px (dp) so it looks consistent across devices.
-          size: const Size(49 / 3.0, 49 / 3.0),
-          caption: NOverlayCaption(text: p.name),
-        ),
+        marker,
       );
     }
     if (overlays.isNotEmpty) {
@@ -866,6 +873,16 @@ class _PlacesMiniMapState extends State<_PlacesMiniMap> {
             await _syncMarkers();
           },
         ),
+        if (_selectedPlace != null)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 56,
+            child: PlaceInfoPopup(
+              place: _selectedPlace!,
+              onClose: () => setState(() => _selectedPlace = null),
+            ),
+          ),
         Positioned(
           right: 12,
           bottom: 12,
