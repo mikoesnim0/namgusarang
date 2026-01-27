@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/auth_providers.dart';
 import 'coupon_model.dart';
 
 enum CouponFilter {
@@ -25,23 +26,32 @@ final couponSortProvider = StateProvider<CouponSort>((ref) {
 });
 
 final couponsStreamProvider = StreamProvider<List<Coupon>>((ref) {
-  // MVP: read from a shared collection. Later we should scope by userId.
-  final q = FirebaseFirestore.instance.collection('coupons');
-  return q.snapshots().map((snap) {
-    return snap.docs.map((d) => _couponFromDoc(d)).toList();
-  });
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
+
+  // User-scoped coupons: /users/{uid}/coupons/{couponId}
+  final q = FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('coupons');
+
+  return q.snapshots().map((snap) => snap.docs.map(_couponFromDoc).toList());
 });
 
 final placeCouponsProvider = StreamProvider.family<List<Coupon>, String>((
   ref,
   placeId,
 ) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
+
   final q = FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
       .collection('coupons')
       .where('placeId', isEqualTo: placeId);
-  return q.snapshots().map((snap) {
-    return snap.docs.map((d) => _couponFromDoc(d)).toList();
-  });
+
+  return q.snapshots().map((snap) => snap.docs.map(_couponFromDoc).toList());
 });
 
 final visibleCouponsProvider = Provider<AsyncValue<List<Coupon>>>((ref) {
@@ -83,6 +93,7 @@ class CouponsRepository {
   CouponsRepository(this._db);
 
   final FirebaseFirestore _db;
+  static const _userCouponsSubcollection = 'coupons';
 
   static bool isValidCode(String code) {
     if (code.length != 6) return false;
@@ -92,13 +103,18 @@ class CouponsRepository {
     return true;
   }
 
-  Future<bool> redeem({
+  Future<bool> redeemForUser({
+    required String uid,
     required String couponId,
     required String inputCode,
   }) async {
     if (!isValidCode(inputCode)) return false;
 
-    final ref = _db.collection('coupons').doc(couponId);
+    final ref = _db
+        .collection('users')
+        .doc(uid)
+        .collection(_userCouponsSubcollection)
+        .doc(couponId);
     return _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       if (!snap.exists) return false;

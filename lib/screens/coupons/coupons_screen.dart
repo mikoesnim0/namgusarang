@@ -310,13 +310,25 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
   String _code = '';
 
   Future<void> _submit() async {
+    final uid = ref.read(authStateProvider).valueOrNull?.uid;
+    if (uid == null) {
+      if (!mounted) return;
+      setState(() {
+        _error = '로그인이 필요합니다';
+        _code = '';
+      });
+      return;
+    }
+
     final code = _code;
-    final ok = await ref.read(couponsRepositoryProvider).redeem(
-      couponId: widget.coupon.id,
-      inputCode: code,
-    );
+    final ok = await ref.read(couponsRepositoryProvider).redeemForUser(
+          uid: uid,
+          couponId: widget.coupon.id,
+          inputCode: code,
+        );
 
     if (ok) {
+      if (!mounted) return;
       Navigator.of(context).pop();
       ref.read(homeControllerProvider.notifier).completeMission(MissionType.coupon);
       ScaffoldMessenger.of(context).showSnackBar(

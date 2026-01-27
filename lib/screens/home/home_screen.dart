@@ -34,6 +34,8 @@ class HomeScreen extends ConsumerWidget {
     return '$yy.$mm.$dd';
   }
 
+  String _fmtTodayLabel(DateTime d) => '오늘 ${_fmtDate(d)}';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AsyncValue<int>>(todayStepsProvider, (_, next) {
@@ -61,6 +63,8 @@ class HomeScreen extends ConsumerWidget {
     final cycleEnd = DateTime.now().add(Duration(days: home.cycle.daysLeft));
     final cycleStart = cycleEnd.subtract(const Duration(days: 9));
     final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
+    final todayLabel = _fmtTodayLabel(DateTime.now());
+    final todayIndex = (10 - home.cycle.daysLeft).clamp(1, 10);
 
     final permissionStatus = ref
         .watch(stepsPermissionStatusProvider)
@@ -76,6 +80,7 @@ class HomeScreen extends ConsumerWidget {
             daysLeft: home.cycle.daysLeft,
             onProfileTap: () => context.push('/my/info'),
             onSettingsTap: () => context.push('/settings'),
+            todayLabel: todayLabel,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -137,11 +142,10 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  _DaysLeftCard(daysLeft: home.cycle.daysLeft),
-                  const SizedBox(height: 12),
                   _SuccessDaysCard(
                     milestones: home.milestones,
                     completed: home.completedMilestones,
+                    todayIndex: todayIndex,
                   ),
                   const SizedBox(height: 12),
                   _TodayStepsCard(
@@ -290,6 +294,7 @@ class _HomeHeader extends StatelessWidget {
     required this.daysLeft,
     required this.onProfileTap,
     required this.onSettingsTap,
+    required this.todayLabel,
   });
 
   final String nickname;
@@ -297,6 +302,7 @@ class _HomeHeader extends StatelessWidget {
   final int daysLeft;
   final VoidCallback onProfileTap;
   final VoidCallback onSettingsTap;
+  final String todayLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +335,7 @@ class _HomeHeader extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '티켓 리셋까지 ${daysLeft}일',
+                      todayLabel,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textOnPrimary,
                       ),
@@ -445,10 +451,15 @@ class _DigitBox extends StatelessWidget {
 }
 
 class _SuccessDaysCard extends StatelessWidget {
-  const _SuccessDaysCard({required this.milestones, required this.completed});
+  const _SuccessDaysCard({
+    required this.milestones,
+    required this.completed,
+    required this.todayIndex,
+  });
 
   final List<int> milestones;
   final List<int> completed;
+  final int todayIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -469,18 +480,28 @@ class _SuccessDaysCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: milestones.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, idx) {
-                final n = milestones[idx];
-                final filled = completed.contains(n);
-                return _SuccessDayCircle(text: '$n', filled: filled);
-              },
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 6.0;
+              final available = constraints.maxWidth;
+              // Make 10 circles fit without horizontal scrolling.
+              final size = ((available - spacing * 9) / 10).clamp(20.0, 30.0);
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final n in milestones) ...[
+                    _SuccessDayCircle(
+                      text: '$n',
+                      filled: completed.contains(n),
+                      isToday: n == todayIndex,
+                      size: size,
+                    ),
+                    if (n != milestones.last) const SizedBox(width: spacing),
+                  ],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -489,26 +510,36 @@ class _SuccessDaysCard extends StatelessWidget {
 }
 
 class _SuccessDayCircle extends StatelessWidget {
-  const _SuccessDayCircle({required this.text, required this.filled});
+  const _SuccessDayCircle({
+    required this.text,
+    required this.filled,
+    required this.isToday,
+    required this.size,
+  });
 
   final String text;
   final bool filled;
+  final bool isToday;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = isToday ? Colors.red.shade400 : AppColors.border;
+    final bgColor = filled ? AppColors.primary500 : AppColors.gray100;
+    final fgColor = filled ? AppColors.textOnPrimary : AppColors.textSecondary;
     return Container(
-      width: 32,
-      height: 32,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: filled ? AppColors.primary500 : AppColors.gray100,
-        border: Border.all(color: AppColors.border),
+        color: bgColor,
+        border: Border.all(color: borderColor, width: isToday ? 2 : 1),
       ),
       child: Text(
         text,
         style: AppTypography.labelSmall.copyWith(
-          color: filled ? AppColors.textOnPrimary : AppColors.textSecondary,
+          color: fgColor,
         ),
       ),
     );
