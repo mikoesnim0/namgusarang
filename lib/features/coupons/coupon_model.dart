@@ -10,6 +10,8 @@ class Coupon {
     required this.title,
     required this.description,
     required this.verificationCode,
+    required this.placeId,
+    required this.placeName,
     required this.status,
     required this.expiresAt,
   });
@@ -17,7 +19,9 @@ class Coupon {
   final String id;
   final String title;
   final String description;
-  final String verificationCode; // 4 digits
+  final String verificationCode; // 6 digits
+  final String placeId;
+  final String placeName;
   final CouponStatus status;
   final DateTime expiresAt;
 
@@ -29,9 +33,10 @@ class Coupon {
       title: title,
       description: description,
       verificationCode: verificationCode,
+      placeId: placeId,
+      placeName: placeName,
       status: status ?? this.status,
       expiresAt: expiresAt,
     );
   }
 }
-

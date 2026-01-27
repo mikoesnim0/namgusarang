@@ -6,6 +6,8 @@ class Place {
     required this.lng,
     this.address = '',
     this.category = '',
+    this.openingHours = '',
+    this.naverPlaceUrl = '',
     this.isActive = true,
     this.hasCoupons = false,
   });
@@ -16,6 +18,8 @@ class Place {
   final double lng;
   final String address;
   final String category;
+  final String openingHours;
+  final String naverPlaceUrl;
   final bool isActive;
   final bool hasCoupons;
 
@@ -34,6 +38,8 @@ class Place {
       lng: asDouble(data['lng']),
       address: (data['address'] as String?)?.trim() ?? '',
       category: (data['category'] as String?)?.trim() ?? '',
+      openingHours: (data['openingHours'] as String?)?.trim() ?? '',
+      naverPlaceUrl: (data['naverPlaceUrl'] as String?)?.trim() ?? '',
       isActive: (data['isActive'] as bool?) ?? true,
       hasCoupons: (data['hasCoupons'] as bool?) ?? false,
     );
@@ -45,6 +51,8 @@ class Place {
     'lng': lng,
     'address': address,
     'category': category,
+    'openingHours': openingHours,
+    'naverPlaceUrl': naverPlaceUrl,
     'isActive': isActive,
     'hasCoupons': hasCoupons,
   };

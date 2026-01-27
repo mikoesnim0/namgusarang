@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/places/place.dart';
 import '../../features/places/places_provider.dart';
+import '../../features/coupons/coupons_provider.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/place_info_popup.dart';
 
@@ -115,10 +116,28 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                   left: 12,
                   right: 12,
                   bottom: 64,
-                  child: PlaceInfoPopup(
-                    place: _selectedPlace!,
-                    onClose: () => setState(() => _selectedPlace = null),
-                  ),
+                  child: ref
+                      .watch(placeCouponsProvider(_selectedPlace!.id))
+                      .when(
+                        data: (coupons) => PlaceInfoPopup(
+                          place: _selectedPlace!,
+                          coupons: coupons
+                              .where((c) => c.isActive)
+                              .map((c) => c.title)
+                              .toList(),
+                          onClose: () => setState(() => _selectedPlace = null),
+                        ),
+                        loading: () => PlaceInfoPopup(
+                          place: _selectedPlace!,
+                          coupons: const [],
+                          onClose: () => setState(() => _selectedPlace = null),
+                        ),
+                        error: (_, __) => PlaceInfoPopup(
+                          place: _selectedPlace!,
+                          coupons: const [],
+                          onClose: () => setState(() => _selectedPlace = null),
+                        ),
+                      ),
                 ),
               Positioned(
                 right: 12,

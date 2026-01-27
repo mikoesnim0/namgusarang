@@ -15,6 +15,7 @@ import '../../features/steps/steps_repository.dart';
 import '../../features/steps/steps_sync_provider.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
+import '../../features/coupons/coupons_provider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -837,16 +838,16 @@ class _CouponPlacesMapCard extends StatelessWidget {
   }
 }
 
-class _PlacesMiniMap extends StatefulWidget {
+class _PlacesMiniMap extends ConsumerStatefulWidget {
   const _PlacesMiniMap({required this.places});
 
   final List<Place> places;
 
   @override
-  State<_PlacesMiniMap> createState() => _PlacesMiniMapState();
+  ConsumerState<_PlacesMiniMap> createState() => _PlacesMiniMapState();
 }
 
-class _PlacesMiniMapState extends State<_PlacesMiniMap> {
+class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
   NaverMapController? _controller;
   String _lastSignature = '';
   bool _isRequestingLocation = false;
@@ -921,10 +922,28 @@ class _PlacesMiniMapState extends State<_PlacesMiniMap> {
             left: 12,
             right: 12,
             bottom: 56,
-            child: PlaceInfoPopup(
-              place: _selectedPlace!,
-              onClose: () => setState(() => _selectedPlace = null),
-            ),
+            child: ref
+                .watch(placeCouponsProvider(_selectedPlace!.id))
+                .when(
+                  data: (coupons) => PlaceInfoPopup(
+                    place: _selectedPlace!,
+                    coupons: coupons
+                        .where((c) => c.isActive)
+                        .map((c) => c.title)
+                        .toList(),
+                    onClose: () => setState(() => _selectedPlace = null),
+                  ),
+                  loading: () => PlaceInfoPopup(
+                    place: _selectedPlace!,
+                    coupons: const [],
+                    onClose: () => setState(() => _selectedPlace = null),
+                  ),
+                  error: (_, __) => PlaceInfoPopup(
+                    place: _selectedPlace!,
+                    coupons: const [],
+                    onClose: () => setState(() => _selectedPlace = null),
+                  ),
+                ),
           ),
         Positioned(
           right: 12,

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/coupons/coupon_model.dart';
 import '../../features/coupons/coupons_provider.dart';
+import '../../features/home/home_model.dart';
+import '../../features/home/home_provider.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../theme/app_colors.dart';
@@ -18,7 +20,7 @@ class CouponsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final coupons = ref.watch(visibleCouponsProvider);
+    final couponsAsync = ref.watch(visibleCouponsProvider);
     final filter = ref.watch(couponFilterProvider);
     final sort = ref.watch(couponSortProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
@@ -155,82 +157,106 @@ class CouponsScreen extends ConsumerWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ListView.separated(
-              padding: AppTheme.screenPadding.copyWith(bottom: 120),
-              itemCount: coupons.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, idx) {
-                final c = coupons[idx];
-                return AppCard(
+            child: couponsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(
+                child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.paddingMD),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary100,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
-                        ),
-                        child: Icon(
-                          Icons.confirmation_number,
-                          color:
-                              c.isActive ? AppColors.primary700 : AppColors.gray500,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child:
-                                      Text(c.title, style: AppTypography.bodyLarge),
-                                ),
-                                _StatusBadge(status: c.status),
-                              ],
+                  child: Text('쿠폰 로드 실패: $e', textAlign: TextAlign.center),
+                ),
+              ),
+              data: (coupons) => ListView.separated(
+                padding: AppTheme.screenPadding.copyWith(bottom: 120),
+                itemCount: coupons.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, idx) {
+                  final c = coupons[idx];
+                  return AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary100,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMD,
                             ),
-                            const SizedBox(height: 6),
-                            Text(c.description, style: AppTypography.bodySmall),
-                            const SizedBox(height: 8),
-                            Text(
-                              '만료: ${_formatDate(c.expiresAt)}',
-                              style: AppTypography.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppButton(
-                                    text: c.isActive ? '사용하기' : '사용 불가',
-                                    variant: c.isActive
-                                        ? ButtonVariant.primary
-                                        : ButtonVariant.outline,
-                                    isFullWidth: true,
-                                    onPressed: c.isActive
-                                        ? () => showModalBottomSheet<void>(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              builder: (_) =>
-                                                  _RedeemSheet(coupon: c),
-                                            )
-                                        : null,
+                          ),
+                          child: Icon(
+                            Icons.confirmation_number,
+                            color: c.isActive
+                                ? AppColors.primary700
+                                : AppColors.gray500,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (c.placeName.trim().isNotEmpty) ...[
+                                Text(
+                                  c.placeName.trim(),
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
                               ],
-                            ),
-                          ],
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      c.title,
+                                      style: AppTypography.bodyLarge,
+                                    ),
+                                  ),
+                                  _StatusBadge(status: c.status),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(c.description, style: AppTypography.bodySmall),
+                              const SizedBox(height: 8),
+                              Text(
+                                '만료: ${_formatDate(c.expiresAt)}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: AppButton(
+                                      text: c.isActive ? '사용하기' : '사용 불가',
+                                      variant: c.isActive
+                                          ? ButtonVariant.primary
+                                          : ButtonVariant.outline,
+                                      isFullWidth: true,
+                                      onPressed: c.isActive
+                                          ? () => showModalBottomSheet<void>(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                builder: (_) =>
+                                                    _RedeemSheet(coupon: c),
+                                              )
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -283,15 +309,16 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
   String? _error;
   String _code = '';
 
-  void _submit() {
+  Future<void> _submit() async {
     final code = _code;
-    final ok = ref.read(couponsControllerProvider.notifier).redeem(
-          couponId: widget.coupon.id,
-          inputCode: code,
-        );
+    final ok = await ref.read(couponsRepositoryProvider).redeem(
+      couponId: widget.coupon.id,
+      inputCode: code,
+    );
 
     if (ok) {
       Navigator.of(context).pop();
+      ref.read(homeControllerProvider.notifier).completeMission(MissionType.coupon);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('쿠폰이 사용 처리되었습니다')),
       );
@@ -299,18 +326,18 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
     }
 
     setState(() {
-      _error = '코드가 올바르지 않습니다 (4자리 숫자)';
+      _error = '코드가 올바르지 않습니다 (6자리 숫자)';
       _code = '';
     });
   }
 
   void _append(int digit) {
-    if (_code.length >= 4) return;
+    if (_code.length >= 6) return;
     setState(() {
       _error = null;
       _code = '$_code$digit';
     });
-    if (_code.length == 4) {
+    if (_code.length == 6) {
       // Auto-submit feels close to kiosk-style UX
       _submit();
     }
@@ -348,7 +375,7 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
           Text(widget.coupon.title, style: AppTypography.h4),
           const SizedBox(height: 8),
           Text(
-            '매장에서 4자리 인증 코드를 입력해주세요.',
+            '매장에서 6자리 인증 코드를 입력해주세요.',
             style: AppTypography.bodySmall,
           ),
           const SizedBox(height: 12),
@@ -423,7 +450,7 @@ class _PinRow extends StatelessWidget {
     final chars = code.split('');
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (i) {
+      children: List.generate(6, (i) {
         final filled = i < chars.length;
         return Container(
           width: 44,

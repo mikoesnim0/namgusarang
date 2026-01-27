@@ -6,7 +6,7 @@ import '../settings/settings_provider.dart';
 import 'profile_model.dart';
 
 final personalStatsProvider = Provider<PersonalStats>((ref) {
-  final coupons = ref.watch(couponsControllerProvider);
+  final coupons = ref.watch(couponsStreamProvider).valueOrNull ?? const [];
   final home = ref.watch(homeControllerProvider);
   ref.watch(settingsControllerProvider);
 
