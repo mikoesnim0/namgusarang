@@ -643,7 +643,7 @@ class _StepProgressBar extends StatelessWidget {
         : const Icon(
             Icons.directions_walk,
             size: 18,
-            color: Colors.black87,
+            color: AppColors.textSecondary,
           );
 
     return LayoutBuilder(
