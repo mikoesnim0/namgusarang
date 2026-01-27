@@ -22,6 +22,9 @@
 네트워크 제한으로 리소스 다운로드를 자동화할 수 없으니, 아래 경로로 직접 추가가 필요합니다.
 - 카카오 심볼(말풍선) PNG: `assets/icons/kakao_symbol.png`
 - 걸음 “신발” 아이콘 PNG: `assets/icons/shoe.png`
+- 칼로리 → 음식 환산 아이콘 PNG: `assets/icons/foods/{iconKey}.png`
+  - 예: `assets/icons/foods/Chimeak_ic.png`, `assets/icons/foods/Tuna_Mayo_ic.png`
+  - 권장: 투명 배경, 정사각(예: 75×75px 이상), 필요 시 2x/3x 리소스도 추가
 - 음식 이미지(필요 시): `assets/images/foods/...` (권장: 개별 PNG로 분리)
 
 ---
@@ -82,8 +85,8 @@
 - Done:
   - 현재 회차만 기준으로 누적값이 표시됨(더미→실데이터 연동 단계적)
  - Status:
-   - 🟡 “내 정보 보기” 문구 변경 완료
-   - ⏳ 통계 카드 UI/데이터 연동 필요
+   - 🟡 UI/더미 구현 완료(`PersonalInfoScreen`, `personalStatsProvider`)
+   - ⏳ Firestore 실데이터(회차/걸음수/칼로리) 연동 필요
 
 ### 1.5 칼로리 → 음식 환산(회차 누적, 상위 1개)
 - Where: `홈` 또는 `내 정보 보기`
@@ -93,7 +96,8 @@
 - Done:
   - 환산 값이 항상 1개로 표시되고, 기준이 회차 누적임이 명확
  - Status:
-   - ⏳ 환산표(칼로리→음식) 확정 필요
+   - 🟡 기본 환산표/로직 구현(더미) + 아이콘 경로: `assets/icons/foods/{iconKey}.png`
+   - ⏳ 디자이너 확정 환산표로 수치 검증/조정 필요
 
 ### 1.6 친구 목록 - 브랜디아 리스트 형태 + 일일 걸음수
 - Where: `친구목록`
@@ -136,8 +140,15 @@
   - 권한 거절/미지원 기기에서도 앱이 깨지지 않고 대체 UI가 표시됨
   - Firestore에 일일/누적 값이 정상 반영되고 친구 화면의 “일일 걸음수”가 연결됨
   - (스토어 심사 대비) iOS `Info.plist`/Android 권한 설명 문구가 준비됨
- - Status:
-  - ⏳ 구현 필요(다음 우선순위)
+  - Status:
+  - 🟡 1차 구현 완료(센서 기반)
+    - Dart: `lib/features/steps/steps_repository.dart`, `lib/features/steps/steps_provider.dart`
+    - Android: `android/app/src/main/kotlin/.../StepsApi.kt` + `ACTIVITY_RECOGNITION` 권한
+    - iOS: `ios/Runner/StepsStreamHandler.swift` + `NSMotionUsageDescription`
+  - ⏳ 실기기 검증(권한 거절/미지원 기기) + 친구/통계 연동은 다음 단계
+  - 검증 팁
+    - Android 에뮬레이터는 보통 걸음 센서가 없어 `0`으로 보일 수 있습니다(디버그 액션 버튼으로 UI 확인).
+    - iOS 시뮬레이터는 걸음 수가 지원되지 않는 경우가 많아, 실기기에서 권한/값 확인을 권장합니다.
 
 ---
 
@@ -146,10 +157,10 @@
 오해 방지와 리스크 최소화를 위해 “디자인-먼저(더미) → 데이터 연동” 순서로 진행합니다.
 
 ### Phase 1 (1~2일): 설정(마이/프로필/알림) UI 정렬
-- 목표: 스샷 `01_settings.png` 기준으로 레이아웃/버튼 위치를 동일하게 맞춤
+- 목표: 스샷 `02_settings_1.png`, `02_settings_2.png`, `03_my_notice.png` 기준으로 레이아웃/버튼 위치를 동일하게 맞춤
 
 ### Phase 2 (2~4일): 홈 UI(회차 기간/성공한날/걸음수 카드)
-- 목표: 스샷 `02_steps_card.png`, `03_home_top.png` 기준으로 픽셀 튜닝
+- 목표: 스샷 `01_steps_home_main.png` 기준으로 픽셀 튜닝
 - 포함: 신발 아이콘 적용
 
 ### Phase 3 (2~3일): 내 정보 보기(현재 회차 누적) + 음식 환산(테이블 확정 후)
