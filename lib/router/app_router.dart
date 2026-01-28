@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../screens/auth/auth_screens.dart';
+import '../screens/coupons/coupon_detail_screen.dart';
 import '../screens/coupons/coupons_screen.dart';
 import '../screens/friends/friend_requests_screen.dart';
 import '../screens/friends/friends_screen.dart';
@@ -80,6 +81,18 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/coupons',
               builder: (context, state) => const CouponsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':couponId',
+                  pageBuilder: (context, state) {
+                    final id = state.pathParameters['couponId'] ?? '';
+                    return _slidePage(
+                      key: state.pageKey,
+                      child: CouponDetailScreen(couponId: id),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),

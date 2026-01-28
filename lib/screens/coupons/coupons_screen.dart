@@ -43,6 +43,7 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
     final filter = ref.watch(couponFilterProvider);
     final sort = ref.watch(couponSortProvider);
     final query = ref.watch(couponSearchQueryProvider);
+    final newCount = ref.watch(newCouponsCountProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
     final authUser = ref.watch(authStateProvider).valueOrNull;
@@ -107,7 +108,36 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
               ),
               const Align(
                 alignment: Alignment.center,
-                child: Text('쿠폰함'),
+                child: SizedBox.shrink(),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('쿠폰함'),
+                    if (newCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$newCount',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -244,6 +274,7 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                       c.status == CouponStatus.active;
                   return AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                    onTap: () => context.push('/coupons/${c.id}'),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

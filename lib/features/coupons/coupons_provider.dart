@@ -27,6 +27,30 @@ final couponSortProvider = StateProvider<CouponSort>((ref) {
 
 final couponSearchQueryProvider = StateProvider<String>((ref) => '');
 
+final newCouponsCountProvider = Provider<int>((ref) {
+  final coupons = ref.watch(couponsStreamProvider).valueOrNull ?? const <Coupon>[];
+  final now = DateTime.now();
+  final n = coupons.where((c) {
+    if (c.status != CouponStatus.active) return false;
+    final created = c.createdAt;
+    if (created == null) return false;
+    return now.difference(created).inHours < 24;
+  }).length;
+  return n;
+});
+
+final couponByIdProvider = StreamProvider.family<Coupon?, String>((ref, couponId) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
+  return FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .collection('coupons')
+      .doc(couponId)
+      .snapshots()
+      .map((s) => s.data() == null ? null : _couponFromMap(s.id, s.data()!));
+});
+
 final couponsStreamProvider = StreamProvider<List<Coupon>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return const Stream.empty();
@@ -169,7 +193,10 @@ class CouponsRepository {
 }
 
 Coupon _couponFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
-  final data = d.data();
+  return _couponFromMap(d.id, d.data());
+}
+
+Coupon _couponFromMap(String id, Map<String, dynamic> data) {
   final statusRaw = (data['status'] as String?)?.trim().toLowerCase() ?? 'active';
   final status = switch (statusRaw) {
     'used' => CouponStatus.used,
@@ -191,7 +218,7 @@ Coupon _couponFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
   }
 
   return Coupon(
-    id: d.id,
+    id: id,
     title: (data['title'] as String?)?.trim() ?? '',
     description: (data['description'] as String?)?.trim() ?? '',
     verificationCode: (data['verificationCode'] as String?)?.trim() ?? '',

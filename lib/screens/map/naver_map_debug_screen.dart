@@ -24,6 +24,8 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
   bool _isRequestingLocation = false;
   NOverlayImage? _placeMarkerIcon;
   Place? _selectedPlace;
+  String? _deepLinkPlaceId;
+  bool _didApplyDeepLink = false;
 
   Future<void> _syncMarkers(List<Place> places) async {
     final controller = _controller;
@@ -62,12 +64,42 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
     }
   }
 
+  Future<void> _tryApplyDeepLink(List<Place> places) async {
+    final placeId = _deepLinkPlaceId;
+    if (placeId == null || placeId.isEmpty) return;
+    if (_didApplyDeepLink) return;
+
+    final controller = _controller;
+    if (controller == null) return;
+
+    final hit = places.where((p) => p.id == placeId).toList();
+    if (hit.isEmpty) return;
+
+    final p = hit.first;
+    _didApplyDeepLink = true;
+    if (mounted) setState(() => _selectedPlace = p);
+
+    await controller.updateCamera(
+      NCameraUpdate.scrollAndZoomTo(
+        target: NLatLng(p.lat, p.lng),
+        zoom: 16,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final uriPlaceId = GoRouterState.of(context).uri.queryParameters['placeId'];
+    if (uriPlaceId != _deepLinkPlaceId) {
+      _deepLinkPlaceId = uriPlaceId;
+      _didApplyDeepLink = false;
+    }
+
     ref.listen<AsyncValue<List<Place>>>(activePlacesProvider, (_, next) {
       final places = next.valueOrNull;
       if (places != null) {
         _syncMarkers(places);
+        _tryApplyDeepLink(places);
       }
     });
 
@@ -108,6 +140,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                   final places = placesAsync.valueOrNull;
                   if (places != null) {
                     await _syncMarkers(places);
+                    await _tryApplyDeepLink(places);
                   }
                 },
               ),

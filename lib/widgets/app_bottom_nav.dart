@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
+import '../features/coupons/coupons_provider.dart';
 
 /// Custom bottom navigation that matches the Figma style:
 /// - 3 tabs: Home / Coupons (center raised) / Friends
@@ -10,7 +11,7 @@ import '../theme/app_typography.dart';
 ///
 /// Keep this widget self-contained so contractors can tweak nav visuals
 /// without touching routing logic.
-class AppBottomNav extends StatelessWidget {
+class AppBottomNav extends ConsumerWidget {
   const AppBottomNav({
     super.key,
     required this.currentIndex,
@@ -43,7 +44,8 @@ class AppBottomNav extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final newCoupons = ref.watch(newCouponsCountProvider);
     return SafeArea(
       top: false,
       child: SizedBox(
@@ -92,6 +94,7 @@ class AppBottomNav extends StatelessWidget {
               child: _CenterButton(
                 isActive: currentIndex == 1,
                 onTap: () => onTap(1),
+                badgeCount: newCoupons,
               ),
             ),
           ],
@@ -163,10 +166,15 @@ class _CenterLabel extends StatelessWidget {
 }
 
 class _CenterButton extends StatelessWidget {
-  const _CenterButton({required this.isActive, required this.onTap});
+  const _CenterButton({
+    required this.isActive,
+    required this.onTap,
+    required this.badgeCount,
+  });
 
   final bool isActive;
   final VoidCallback onTap;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +229,26 @@ class _CenterButton extends StatelessWidget {
                 ],
               ),
             ),
+            if (badgeCount > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade600,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

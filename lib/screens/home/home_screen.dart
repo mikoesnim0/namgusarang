@@ -367,25 +367,32 @@ class HomeScreen extends ConsumerWidget {
     if (!issued) return;
     if (!context.mounted) return;
 
-    final goCoupons = await showDialog<bool>(
+    final action = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('쿠폰 발급 완료'),
         content: Text('미션을 완료해서 쿠폰이 발급되었습니다.\n\n[$title]\n${place.name}'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(context).pop(0),
             child: const Text('닫기'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(context).pop(1),
+            child: const Text('쿠폰 상세'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(2),
             child: const Text('쿠폰함 보기'),
           ),
         ],
       ),
     );
 
-    if (goCoupons == true && context.mounted) {
+    if (!context.mounted) return;
+    if (action == 1) {
+      context.push('/coupons/$issueKey');
+    } else if (action == 2) {
       context.go('/coupons');
     }
   }
