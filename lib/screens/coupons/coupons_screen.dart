@@ -15,14 +15,34 @@ import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
 
-class CouponsScreen extends ConsumerWidget {
+class CouponsScreen extends ConsumerStatefulWidget {
   const CouponsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CouponsScreen> createState() => _CouponsScreenState();
+}
+
+class _CouponsScreenState extends ConsumerState<CouponsScreen> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final couponsAsync = ref.watch(visibleCouponsProvider);
     final filter = ref.watch(couponFilterProvider);
     final sort = ref.watch(couponSortProvider);
+    final query = ref.watch(couponSearchQueryProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
     final authUser = ref.watch(authStateProvider).valueOrNull;
@@ -36,6 +56,16 @@ class CouponsScreen extends ConsumerWidget {
             : (settingsNickname?.trim().isNotEmpty == true)
                 ? settingsNickname!.trim()
                 : '닉네임';
+
+    if (_searchController.text != query) {
+      _searchController.value = _searchController.value.copyWith(
+        text: query,
+        selection: TextSelection.fromPosition(
+          TextPosition(offset: query.length),
+        ),
+        composing: TextRange.empty,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -90,6 +120,44 @@ class CouponsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: '쿠폰 검색 (업체명/쿠폰명)',
+                            hintStyle: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (v) => ref
+                              .read(couponSearchQueryProvider.notifier)
+                              .state = v,
+                        ),
+                      ),
+                      if (query.trim().isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => ref
+                              .read(couponSearchQueryProvider.notifier)
+                              .state = '',
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,

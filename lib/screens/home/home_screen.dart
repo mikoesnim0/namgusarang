@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import '../../features/foods/food_equivalents.dart';
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
+import '../../features/coupons/coupons_provider.dart';
 import '../../features/places/place.dart';
 import '../../features/places/places_provider.dart';
 import '../../features/steps/steps_provider.dart';
@@ -15,7 +17,6 @@ import '../../features/steps/steps_repository.dart';
 import '../../features/steps/steps_sync_provider.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
-import '../../features/coupons/coupons_provider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -42,6 +43,21 @@ class HomeScreen extends ConsumerWidget {
       final steps = next.valueOrNull;
       if (steps == null) return;
       ref.read(homeControllerProvider.notifier).setTodaySteps(steps);
+    });
+
+    // Coupon issuance UX (MVP): when the steps mission flips incomplete -> complete,
+    // issue a coupon to the current user and show a confirmation dialog.
+    ref.listen<HomeState>(homeControllerProvider, (prev, next) {
+      if (prev == null) return;
+
+      bool isStepsDone(HomeState s) =>
+          s.missions.any((m) => m.type == MissionType.steps && m.isCompleted);
+
+      final wasDone = isStepsDone(prev);
+      final nowDone = isStepsDone(next);
+      if (wasDone || !nowDone) return;
+
+      unawaited(_issueCouponForStepsMission(context, ref));
     });
     ref.watch(stepsSyncControllerProvider);
 
@@ -96,9 +112,27 @@ class HomeScreen extends ConsumerWidget {
                   Row(
                     children: [
                       InkWell(
-                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('가이드 기능은 추후 연결됩니다.')),
-                        ),
+                        onTap: () async {
+                          await showDialog<void>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('가이드'),
+                              content: const Text(
+                                'Walker홀릭은 “걷기 미션”을 달성하면 쿠폰을 발급받고,\n'
+                                '지도에서 쿠폰 사용 가능한 매장을 확인할 수 있는 앱입니다.\n\n'
+                                '- 오늘의 걸음 수: 목표 달성까지 남은 걸음 확인\n'
+                                '- 쿠폰함: 발급된 쿠폰 확인/사용\n'
+                                '- 지도: 쿠폰 사용 가능한 매장 확인\n',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('닫기'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                         child: Text(
                           '가이드',
                           style: AppTypography.bodySmall.copyWith(
@@ -284,6 +318,76 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _issueCouponForStepsMission(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user == null) return;
+
+    // Pick a place (coupon-enabled first).
+    final places = ref.read(activePlacesProvider).valueOrNull ?? const <Place>[];
+    final place = places.firstWhere(
+      (p) => p.hasCoupons,
+      orElse: () => places.isNotEmpty ? places.first : const Place(id: 'place_001', name: '샘플매장', lat: 0, lng: 0),
+    );
+
+    final templates = const [
+      ('아메리카노 1잔 무료', '매장에서 6자리 인증 코드를 입력하면 사용 처리됩니다.'),
+      ('3,000원 할인 쿠폰', '결제 시 직원에게 6자리 코드를 보여주세요.'),
+      ('1+1 쿠폰', '대상 상품에 한해 1+1 적용됩니다.'),
+    ];
+
+    final idx = DateTime.now().day % templates.length;
+    final (title, description) = templates[idx];
+
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    final issueKey = 'steps_${y}${m}${d}';
+
+    final code = (math.Random().nextInt(900000) + 100000).toString();
+    final expiresAt = now.add(const Duration(days: 7));
+
+    final issued = await ref.read(couponsRepositoryProvider).issueCouponForUser(
+          uid: user.uid,
+          couponId: issueKey,
+          data: {
+            'title': title,
+            'description': description,
+            'verificationCode': code,
+            'status': 'active',
+            'expiresAt': expiresAt,
+            'placeId': place.id,
+            'placeName': place.name,
+            'issuedFor': issueKey,
+          },
+        );
+
+    if (!issued) return;
+    if (!context.mounted) return;
+
+    final goCoupons = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('쿠폰 발급 완료'),
+        content: Text('미션을 완료해서 쿠폰이 발급되었습니다.\n\n[$title]\n${place.name}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('닫기'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('쿠폰함 보기'),
+          ),
+        ],
+      ),
+    );
+
+    if (goCoupons == true && context.mounted) {
+      context.go('/coupons');
+    }
   }
 }
 

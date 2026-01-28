@@ -25,6 +25,8 @@ final couponSortProvider = StateProvider<CouponSort>((ref) {
   return CouponSort.expiresSoon;
 });
 
+final couponSearchQueryProvider = StateProvider<String>((ref) => '');
+
 final couponsStreamProvider = StreamProvider<List<Coupon>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return const Stream.empty();
@@ -58,6 +60,7 @@ final visibleCouponsProvider = Provider<AsyncValue<List<Coupon>>>((ref) {
   final couponsAsync = ref.watch(couponsStreamProvider);
   final filter = ref.watch(couponFilterProvider);
   final sort = ref.watch(couponSortProvider);
+  final q = ref.watch(couponSearchQueryProvider).trim().toLowerCase();
 
   return couponsAsync.whenData((coupons) {
     Iterable<Coupon> filtered = coupons;
@@ -73,6 +76,14 @@ final visibleCouponsProvider = Provider<AsyncValue<List<Coupon>>>((ref) {
     }
 
     final list = filtered.toList();
+
+    if (q.isNotEmpty) {
+      list.retainWhere((c) {
+        final hay = '${c.placeName} ${c.title} ${c.description}'.toLowerCase();
+        return hay.contains(q);
+      });
+    }
+
     switch (sort) {
       case CouponSort.expiresSoon:
         list.sort((a, b) => a.expiresAt.compareTo(b.expiresAt));
@@ -94,6 +105,29 @@ class CouponsRepository {
 
   final FirebaseFirestore _db;
   static const _userCouponsSubcollection = 'coupons';
+
+  Future<bool> issueCouponForUser({
+    required String uid,
+    required String couponId,
+    required Map<String, dynamic> data,
+  }) async {
+    final ref = _db
+        .collection('users')
+        .doc(uid)
+        .collection(_userCouponsSubcollection)
+        .doc(couponId);
+
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (snap.exists) return false;
+      tx.set(ref, {
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    });
+  }
 
   static bool isValidCode(String code) {
     if (code.length != 6) return false;

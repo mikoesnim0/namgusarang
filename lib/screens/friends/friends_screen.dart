@@ -21,10 +21,13 @@ class FriendsScreen extends ConsumerStatefulWidget {
 
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final _controller = TextEditingController();
+  final _friendSearchController = TextEditingController();
+  String _friendQuery = '';
 
   @override
   void dispose() {
     _controller.dispose();
+    _friendSearchController.dispose();
     super.dispose();
   }
 
@@ -52,6 +55,12 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final friends = ref.watch(friendsControllerProvider);
     final requests = ref.watch(friendRequestsControllerProvider);
     final pendingCount = requests.sent.length + requests.received.length;
+    final visibleFriends = _friendQuery.trim().isEmpty
+        ? friends
+        : friends
+            .where((f) =>
+                f.nickname.toLowerCase().contains(_friendQuery.toLowerCase()))
+            .toList();
 
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -129,7 +138,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ),
       body: ListView.separated(
         padding: AppTheme.screenPadding.copyWith(bottom: 120),
-        itemCount: friends.length + 1,
+        itemCount: visibleFriends.length + 1,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, idx) {
           if (idx == 0) {
@@ -141,11 +150,49 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   onSubmit: _submitNickname,
                 ),
                 const SizedBox(height: 10),
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _friendSearchController,
+                          decoration: InputDecoration(
+                            hintText: '친구 검색',
+                            hintStyle: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textHint,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (v) =>
+                              setState(() => _friendQuery = v.trim()),
+                        ),
+                      ),
+                      if (_friendQuery.trim().isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () {
+                            _friendSearchController.clear();
+                            setState(() => _friendQuery = '');
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     const Spacer(),
                     Text(
-                      '${friends.length}명',
+                      '${visibleFriends.length}명',
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -156,7 +203,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             );
           }
 
-          final friend = friends[idx - 1];
+          final friend = visibleFriends[idx - 1];
           return _FriendCard(friend: friend);
         },
       ),
@@ -314,4 +361,3 @@ String _comma(int n) {
   }
   return buf.toString();
 }
-

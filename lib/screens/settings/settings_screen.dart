@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_controller.dart';
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
@@ -13,6 +14,41 @@ import '../../theme/app_colors.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _confirmAndLaunch(
+    BuildContext context, {
+    required String title,
+    required String url,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: const Text('외부 링크로 이동하시겠습니까?\n(도약민 홈페이지로 이동합니다)'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('이동'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('취소되었습니다.')),
+      );
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   String _authProviderLabel(dynamic authUser) {
     try {
@@ -166,8 +202,10 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       title: '서비스 이용 약관',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('약관 화면은 추후 연결됩니다.')),
+                        _confirmAndLaunch(
+                          context,
+                          title: '서비스 이용 약관',
+                          url: 'https://doyakmin.com/news/terms-of-service',
                         );
                       },
                     ),
@@ -175,10 +213,10 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       title: '개인정보 처리 방침',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('개인정보 처리 방침 화면은 추후 연결됩니다.'),
-                          ),
+                        _confirmAndLaunch(
+                          context,
+                          title: '개인정보 처리 방침',
+                          url: 'https://doyakmin.com/news/privacy-policy',
                         );
                       },
                     ),
@@ -186,8 +224,10 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       title: '문의 하기',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('문의 기능은 추후 연결됩니다.')),
+                        _confirmAndLaunch(
+                          context,
+                          title: '문의하기',
+                          url: 'https://doyakmin.com/contact',
                         );
                       },
                     ),
