@@ -39,6 +39,12 @@ function readCsv(csvPath) {
   });
 }
 
+function makeNaverSearchUrl({ name, address }) {
+  const q = [name, address].filter(Boolean).join(' ').trim();
+  if (!q) return '';
+  return `https://m.search.naver.com/search.naver?query=${encodeURIComponent(q)}`;
+}
+
 async function main() {
   const argv = minimist(process.argv.slice(2));
 
@@ -103,12 +109,19 @@ async function main() {
     const docId = id || db.collection('places').doc().id;
     const ref = db.collection('places').doc(docId);
 
+    const openingHours = (r.openingHours || '').trim() || '매일 10:00-22:00';
+    const naverPlaceUrl =
+      (r.naverPlaceUrl || '').trim() ||
+      makeNaverSearchUrl({ name, address: (r.address || '').trim() });
+
     const data = {
       name,
       lat,
       lng,
       address: (r.address || '').trim(),
       category: (r.category || '').trim(),
+      openingHours,
+      naverPlaceUrl,
       hasCoupons: asBool(r.hasCoupons, false),
       isActive: asBool(r.isActive, true),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),

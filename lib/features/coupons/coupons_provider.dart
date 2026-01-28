@@ -183,6 +183,13 @@ Coupon _couponFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
     return DateTime.now().add(const Duration(days: 7));
   }
 
+  DateTime? tsToDateNullable(dynamic v) {
+    if (v == null) return null;
+    if (v is Timestamp) return v.toDate();
+    if (v is DateTime) return v;
+    return null;
+  }
+
   return Coupon(
     id: d.id,
     title: (data['title'] as String?)?.trim() ?? '',
@@ -192,5 +199,6 @@ Coupon _couponFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
     placeName: (data['placeName'] as String?)?.trim() ?? '',
     status: status,
     expiresAt: tsToDate(data['expiresAt']),
+    createdAt: tsToDateNullable(data['createdAt']),
   );
 }

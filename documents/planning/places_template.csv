@@ -1,3 +1,3 @@
-id,name,address,category,lat,lng,hasCoupons,isActive
-place_001,샘플매장1,부산 어딘가,cafe,35.1595,129.0756,true,true
-place_002,샘플매장2,부산 어딘가,restaurant,35.1610,129.0790,false,true
+id,name,address,category,lat,lng,hasCoupons,isActive,openingHours,naverPlaceUrl
+place_001,샘플매장1,부산 어딘가,cafe,35.1595,129.0756,true,true,매일 10:00-22:00,
+place_002,샘플매장2,부산 어딘가,restaurant,35.1610,129.0790,false,true,매일 10:00-22:00,

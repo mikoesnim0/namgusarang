@@ -11,6 +11,8 @@
 - `lng` (number, required): 경도 (예: 129.0756)
 - `address` (string, optional): 주소/상세 위치
 - `category` (string, optional): 카테고리 (예: cafe, restaurant, convenience)
+- `openingHours` (string, optional): 영업시간 (예: "매일 10:00-22:00 (라스트오더 21:30)")
+- `naverPlaceUrl` (string, optional): 네이버 플레이스 링크(또는 네이버 검색 링크)
 - `hasCoupons` (bool, optional, default false): 쿠폰 사용 가능 매장 여부
 - `isActive` (bool, optional, default true): 지도 노출 여부
 - `createdAt` (timestamp, optional): 생성 시각 (서버 타임스탬프 권장)
@@ -19,4 +21,3 @@
 ## Notes
 - MVP에서는 `lat/lng`를 필수로 저장하고, 주소 검색(geocoding)은 사용하지 않습니다.
 - 추후 필터/정렬이 필요하면 `category`, `hasCoupons` 기반 인덱스를 추가합니다.
-

@@ -9,6 +9,7 @@ This folder contains scripts to seed Firestore collections for development.
 
 ## Scripts
 - `seed_places.js`: seeds `/places`
+- `export_places_to_csv.js`: exports `/places` into a CSV (for bulk editing)
 - `seed_user_coupons.js`: seeds `/users/{uid}/coupons`
 
 ## Input CSV
@@ -36,6 +37,12 @@ Seed (upsert into `places`):
 
 ```bash
 npm run seed_places
+```
+
+Export (download current places to CSV):
+
+```bash
+npm run export_places_csv
 ```
 
 Custom paths:

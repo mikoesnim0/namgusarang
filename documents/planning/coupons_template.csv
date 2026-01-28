@@ -1,3 +1,6 @@
 couponId,title,description,verificationCode,status,expiresAt,placeId,placeName
-steps_20260127,아메리카노 1잔 무료,매장에서 6자리 인증 코드를 입력하면 사용 처리됩니다.,123456,active,2026-02-03,place_001,샘플매장1
-welcome_001,3,000원 할인 쿠폰,결제 시 직원에게 6자리 코드를 보여주세요.,654321,active,2026-02-10,place_002,샘플매장2
+welcome_001,아메리카노 1잔 무료,매장에서 6자리 인증 코드를 입력하면 사용 처리됩니다.,,active,2026-02-03,place_001,샘플매장1
+welcome_002,3000원 할인 쿠폰,결제 시 직원에게 6자리 코드를 보여주세요.,,active,2026-02-10,place_001,샘플매장1
+welcome_003,1+1 쿠폰,대상 상품 1+1 적용.,,active,2026-02-10,place_002,샘플매장2
+welcome_004,디저트 무료,음료 구매 시 디저트 1개 무료.,,active,2026-02-15,place_002,샘플매장2
+welcome_005,1000원 할인,결제 금액에서 1000원 할인.,,active,2026-02-15,place_001,샘플매장1

@@ -239,6 +239,9 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, idx) {
                   final c = coupons[idx];
+                  final isNew = c.createdAt != null &&
+                      DateTime.now().difference(c.createdAt!).inHours < 24 &&
+                      c.status == CouponStatus.active;
                   return AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
                     child: Row(
@@ -266,12 +269,41 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (c.placeName.trim().isNotEmpty) ...[
-                                Text(
-                                  c.placeName.trim(),
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        c.placeName.trim(),
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isNew)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            AppSpacing.radiusFull,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.red.shade200,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'NEW',
+                                          style: AppTypography.labelSmall.copyWith(
+                                            color: Colors.red.shade700,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                               ],

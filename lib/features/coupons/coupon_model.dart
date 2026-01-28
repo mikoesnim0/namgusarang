@@ -14,6 +14,7 @@ class Coupon {
     required this.placeName,
     required this.status,
     required this.expiresAt,
+    this.createdAt,
   });
 
   final String id;
@@ -24,6 +25,7 @@ class Coupon {
   final String placeName;
   final CouponStatus status;
   final DateTime expiresAt;
+  final DateTime? createdAt;
 
   bool get isActive => status == CouponStatus.active;
 
@@ -37,6 +39,7 @@ class Coupon {
       placeName: placeName,
       status: status ?? this.status,
       expiresAt: expiresAt,
+      createdAt: createdAt,
     );
   }
 }
