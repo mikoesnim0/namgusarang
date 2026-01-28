@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,10 @@ import '../../widgets/place_info_popup.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  // Temporary: hide "오늘 할 일" and debug actions during the release.
+  // Flip to false after launch.
+  static const bool _hideTodoAndDebugUi = true;
 
   String _fmtDate(DateTime d) {
     final yy = (d.year % 100).toString().padLeft(2, '0');
@@ -85,6 +90,7 @@ class HomeScreen extends ConsumerWidget {
     final permissionStatus = ref
         .watch(stepsPermissionStatusProvider)
         .valueOrNull;
+    final showTodoAndDebug = !_hideTodoAndDebugUi && !kReleaseMode;
 
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -251,66 +257,68 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('오늘 할 일', style: AppTypography.labelLarge),
-                        const SizedBox(height: AppSpacing.paddingSM),
-                        for (var i = 0; i < home.missions.length; i++) ...[
-                          _MissionTile(m: home.missions[i]),
-                          if (i != home.missions.length - 1)
-                            const Divider(height: 16),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text('디버그 액션', style: AppTypography.labelLarge),
-                        const SizedBox(height: AppSpacing.paddingMD),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AppButton(
-                                text: '+100',
-                                variant: ButtonVariant.outline,
-                                onPressed: () => ref
-                                    .read(homeControllerProvider.notifier)
-                                    .addSteps(100),
-                                isFullWidth: true,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.paddingMD),
-                            Expanded(
-                              child: AppButton(
-                                text: '+500',
-                                variant: ButtonVariant.outline,
-                                onPressed: () => ref
-                                    .read(homeControllerProvider.notifier)
-                                    .addSteps(500),
-                                isFullWidth: true,
-                              ),
-                            ),
+                  if (showTodoAndDebug) ...[
+                    AppCard(
+                      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('오늘 할 일', style: AppTypography.labelLarge),
+                          const SizedBox(height: AppSpacing.paddingSM),
+                          for (var i = 0; i < home.missions.length; i++) ...[
+                            _MissionTile(m: home.missions[i]),
+                            if (i != home.missions.length - 1)
+                              const Divider(height: 16),
                           ],
-                        ),
-                        const SizedBox(height: AppSpacing.paddingMD),
-                        AppButton(
-                          text: '지도로 보기 (2차)',
-                          variant: ButtonVariant.text,
-                          onPressed: () {},
-                          isFullWidth: true,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    AppCard(
+                      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text('디버그 액션', style: AppTypography.labelLarge),
+                          const SizedBox(height: AppSpacing.paddingMD),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AppButton(
+                                  text: '+100',
+                                  variant: ButtonVariant.outline,
+                                  onPressed: () => ref
+                                      .read(homeControllerProvider.notifier)
+                                      .addSteps(100),
+                                  isFullWidth: true,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.paddingMD),
+                              Expanded(
+                                child: AppButton(
+                                  text: '+500',
+                                  variant: ButtonVariant.outline,
+                                  onPressed: () => ref
+                                      .read(homeControllerProvider.notifier)
+                                      .addSteps(500),
+                                  isFullWidth: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.paddingMD),
+                          AppButton(
+                            text: '지도로 보기 (2차)',
+                            variant: ButtonVariant.text,
+                            onPressed: () {},
+                            isFullWidth: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

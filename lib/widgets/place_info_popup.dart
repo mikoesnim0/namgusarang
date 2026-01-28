@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 import '../features/places/place.dart';
 import '../theme/app_colors.dart';
@@ -65,6 +66,12 @@ class PlaceInfoPopup extends StatelessWidget {
                       _Chip(
                         text: '할인쿠폰 ${coupons.length}개',
                         variant: ChipVariant.highlight,
+                        onTap: () {
+                          onClose();
+                          context.go(
+                            '/coupons?placeId=${Uri.encodeComponent(place.id)}',
+                          );
+                        },
                       ),
                     if (coupons.isNotEmpty) const SizedBox(width: 6),
                     if (place.openingHours.trim().isNotEmpty)
@@ -127,10 +134,12 @@ class _Chip extends StatelessWidget {
   const _Chip({
     required this.text,
     this.variant = ChipVariant.normal,
+    this.onTap,
   });
 
   final String text;
   final ChipVariant variant;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +151,7 @@ class _Chip extends StatelessWidget {
       ChipVariant.highlight => const Color(0xFF6B3A00),
       _ => AppColors.textSecondary,
     };
-    return Container(
+    final child = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
@@ -155,6 +164,13 @@ class _Chip extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: AppTypography.labelSmall.copyWith(color: fg),
       ),
+    );
+
+    if (onTap == null) return child;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+      child: child,
     );
   }
 }

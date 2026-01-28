@@ -25,6 +25,7 @@ class CouponsScreen extends ConsumerStatefulWidget {
 class _CouponsScreenState extends ConsumerState<CouponsScreen> {
   late final TextEditingController _searchController;
   bool _didMarkSeen = false;
+  String? _placeIdFilter;
 
   @override
   void initState() {
@@ -40,6 +41,14 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uriPlaceId = GoRouterState.of(context).uri.queryParameters['placeId'];
+    if (uriPlaceId != _placeIdFilter) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _placeIdFilter = uriPlaceId);
+      });
+    }
+
     final couponsAsync = ref.watch(visibleCouponsProvider);
     final filter = ref.watch(couponFilterProvider);
     final sort = ref.watch(couponSortProvider);
@@ -275,12 +284,46 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                   child: Text('쿠폰 로드 실패: $e', textAlign: TextAlign.center),
                 ),
               ),
-              data: (coupons) => ListView.separated(
+              data: (coupons) {
+                final placeId = _placeIdFilter?.trim();
+                final visible = (placeId == null || placeId.isEmpty)
+                    ? coupons
+                    : coupons.where((c) => c.placeId == placeId).toList();
+
+                return ListView.separated(
                 padding: AppTheme.screenPadding.copyWith(bottom: 120),
-                itemCount: coupons.length,
+                itemCount: visible.length + ((placeId == null || placeId.isEmpty) ? 0 : 1),
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, idx) {
-                  final c = coupons[idx];
+                  if (placeId != null && placeId.isNotEmpty && idx == 0) {
+                    return AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.paddingMD,
+                        vertical: AppSpacing.paddingSM,
+                      ),
+                      margin: EdgeInsets.zero,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.store, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '이 업체 쿠폰만 보기',
+                              style: AppTypography.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.go('/coupons'),
+                            child: const Text('해제'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final c = visible[(placeId != null && placeId.isNotEmpty) ? idx - 1 : idx];
                   final isNew = lastSeenAsync.hasValue &&
                       c.status == CouponStatus.active &&
                       c.createdAt != null &&
@@ -400,7 +443,8 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                     ),
                   );
                 },
-              ),
+              );
+              },
             ),
           ),
         ],
