@@ -66,8 +66,20 @@ Run:
 node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID
 ```
 
+All users (seed the same template coupons into every Firebase Auth user):
+
+```bash
+node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true
+```
+
 Dry run:
 
 ```bash
 node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID --dryRun true
+```
+
+Dry run (all users):
+
+```bash
+node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true --dryRun true
 ```

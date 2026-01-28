@@ -8,7 +8,9 @@
     "seed_places_dry": "node seed_places.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/places_template.csv --dryRun true",
     "export_places_csv": "node export_places_to_csv.js --serviceAccount serviceAccountKey.json --out ../../documents/planning/places_export.csv",
     "seed_user_coupons": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID",
-    "seed_user_coupons_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID --dryRun true"
+    "seed_user_coupons_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID --dryRun true",
+    "seed_user_coupons_all": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true",
+    "seed_user_coupons_all_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true --dryRun true"
   },
   "keywords": [],
   "author": "",

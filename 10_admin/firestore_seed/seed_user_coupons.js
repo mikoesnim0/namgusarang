@@ -52,11 +52,14 @@ async function main() {
   const csvPath = argv.csv;
   const projectId = argv.projectId || argv.project_id;
   const uid = (argv.uid || '').trim();
+  const allUsers = asBool(argv.allUsers ?? argv.all_users, false);
   const dryRun = asBool(argv.dryRun ?? argv.dry_run, false);
 
   if (!serviceAccountPath) die('Missing --serviceAccount path to Firebase service account JSON');
   if (!csvPath) die('Missing --csv path to coupons CSV (e.g. ../../documents/planning/coupons_template.csv)');
-  if (!uid) die('Missing --uid (Firebase Auth uid to seed coupons into /users/{uid}/coupons)');
+  if (!uid && !allUsers) {
+    die('Missing --uid. To seed for all users, pass --allUsers true');
+  }
 
   const resolvedServiceAccount = path.resolve(process.cwd(), serviceAccountPath);
   const resolvedCsv = path.resolve(process.cwd(), csvPath);
@@ -80,55 +83,94 @@ async function main() {
   if (!rows.length) die('CSV has no rows.');
 
   console.log(`Loaded ${rows.length} rows from ${resolvedCsv}`);
-  console.log(`Target user: ${uid}`);
+  if (allUsers) {
+    console.log('Target user: ALL USERS');
+  } else {
+    console.log(`Target user: ${uid}`);
+  }
 
   const BATCH_LIMIT = 450;
-  let batch = db.batch();
-  let inBatch = 0;
   let totalWrites = 0;
 
-  for (const r of rows) {
-    const couponId = (r.couponId || '').trim() || db.collection('x').doc().id;
-    const title = (r.title || '').trim();
-    const description = (r.description || '').trim();
-    const verificationCode = (r.verificationCode || '').trim() || gen6();
-    const status = (r.status || 'active').trim().toLowerCase();
-    const expiresAt = parseDateYYYYMMDD(r.expiresAt, 'expiresAt') || new Date(Date.now() + 7 * 86400 * 1000);
-    const placeId = (r.placeId || '').trim();
-    const placeName = (r.placeName || '').trim();
+  async function listAllUids() {
+    const uids = [];
+    let pageToken = undefined;
+    do {
+      // 1000 per page is the max for listUsers.
+      const res = await admin.auth().listUsers(1000, pageToken);
+      for (const u of res.users) uids.push(u.uid);
+      pageToken = res.pageToken;
+    } while (pageToken);
+    return uids;
+  }
 
-    if (!title) die(`Missing title for couponId=${couponId}`);
-    if (!placeId) die(`Missing placeId for couponId=${couponId}`);
+  async function seedForUid(targetUid) {
+    let batch = db.batch();
+    let inBatch = 0;
 
-    const ref = db.collection('users').doc(uid).collection('coupons').doc(couponId);
-    const data = {
-      title,
-      description,
-      verificationCode,
-      status,
-      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
-      placeId,
-      placeName,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    for (const r of rows) {
+      const couponId = (r.couponId || '').trim() || db.collection('x').doc().id;
+      const title = (r.title || '').trim();
+      const description = (r.description || '').trim();
+      // If CSV doesn't provide a code, generate per-user so they don't all share one code.
+      const verificationCode = (r.verificationCode || '').trim() || gen6();
+      const status = (r.status || 'active').trim().toLowerCase();
+      const expiresAt =
+        parseDateYYYYMMDD(r.expiresAt, 'expiresAt') ||
+        new Date(Date.now() + 7 * 86400 * 1000);
+      const placeId = (r.placeId || '').trim();
+      const placeName = (r.placeName || '').trim();
 
-    if (!dryRun) {
-      batch.set(ref, { ...data, createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      if (!title) die(`Missing title for couponId=${couponId}`);
+      if (!placeId) die(`Missing placeId for couponId=${couponId}`);
+
+      const ref = db
+        .collection('users')
+        .doc(targetUid)
+        .collection('coupons')
+        .doc(couponId);
+      const data = {
+        title,
+        description,
+        verificationCode,
+        status,
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        placeId,
+        placeName,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (!dryRun) {
+        batch.set(
+          ref,
+          { ...data, createdAt: admin.firestore.FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      }
+
+      inBatch += 1;
+      totalWrites += 1;
+      if (inBatch >= BATCH_LIMIT) {
+        if (!dryRun) await batch.commit();
+        batch = db.batch();
+        inBatch = 0;
+      }
     }
 
-    inBatch += 1;
-    totalWrites += 1;
-    if (inBatch >= BATCH_LIMIT) {
+    if (inBatch > 0) {
       if (!dryRun) await batch.commit();
-      console.log(`Committed ${inBatch} writes...`);
-      batch = db.batch();
-      inBatch = 0;
     }
   }
 
-  if (inBatch > 0) {
-    if (!dryRun) await batch.commit();
-    console.log(`Committed ${inBatch} writes...`);
+  if (allUsers) {
+    const uids = await listAllUids();
+    console.log(`Found ${uids.length} users.`);
+    for (const u of uids) {
+      console.log(`Seeding coupons for uid=${u} ...`);
+      await seedForUid(u);
+    }
+  } else {
+    await seedForUid(uid);
   }
 
   console.log(dryRun ? `Dry run OK (${totalWrites} writes skipped).` : `Done. Upserted ${totalWrites} coupons.`);
@@ -138,4 +180,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-
