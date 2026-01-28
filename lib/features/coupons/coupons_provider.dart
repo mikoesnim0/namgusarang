@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_providers.dart';
 import 'coupon_model.dart';
@@ -27,16 +28,29 @@ final couponSortProvider = StateProvider<CouponSort>((ref) {
 
 final couponSearchQueryProvider = StateProvider<String>((ref) => '');
 
+final couponsSeenRepositoryProvider = Provider<CouponsSeenRepository>((ref) {
+  return CouponsSeenRepository(prefs: SharedPreferences.getInstance());
+});
+
+final couponsLastSeenAtProvider = FutureProvider<DateTime>((ref) async {
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+  if (uid == null) return DateTime.fromMillisecondsSinceEpoch(0);
+  final repo = ref.read(couponsSeenRepositoryProvider);
+  return (await repo.getLastSeenAt(uid)) ?? DateTime.fromMillisecondsSinceEpoch(0);
+});
+
 final newCouponsCountProvider = Provider<int>((ref) {
+  final lastSeenAsync = ref.watch(couponsLastSeenAtProvider);
+  if (lastSeenAsync.isLoading) return 0; // avoid false-positive badge during init
+  final lastSeen = lastSeenAsync.valueOrNull ?? DateTime.fromMillisecondsSinceEpoch(0);
+
   final coupons = ref.watch(couponsStreamProvider).valueOrNull ?? const <Coupon>[];
-  final now = DateTime.now();
-  final n = coupons.where((c) {
+  return coupons.where((c) {
     if (c.status != CouponStatus.active) return false;
     final created = c.createdAt;
     if (created == null) return false;
-    return now.difference(created).inHours < 24;
+    return created.isAfter(lastSeen);
   }).length;
-  return n;
 });
 
 final couponByIdProvider = StreamProvider.family<Coupon?, String>((ref, couponId) {
@@ -93,10 +107,13 @@ final visibleCouponsProvider = Provider<AsyncValue<List<Coupon>>>((ref) {
         break;
       case CouponFilter.active:
         filtered = filtered.where((c) => c.status == CouponStatus.active);
+        break;
       case CouponFilter.used:
         filtered = filtered.where((c) => c.status == CouponStatus.used);
+        break;
       case CouponFilter.expired:
         filtered = filtered.where((c) => c.status == CouponStatus.expired);
+        break;
     }
 
     final list = filtered.toList();
@@ -111,10 +128,13 @@ final visibleCouponsProvider = Provider<AsyncValue<List<Coupon>>>((ref) {
     switch (sort) {
       case CouponSort.expiresSoon:
         list.sort((a, b) => a.expiresAt.compareTo(b.expiresAt));
+        break;
       case CouponSort.expiresLate:
         list.sort((a, b) => b.expiresAt.compareTo(a.expiresAt));
+        break;
       case CouponSort.title:
         list.sort((a, b) => a.title.compareTo(b.title));
+        break;
     }
     return list;
   });
@@ -189,6 +209,26 @@ class CouponsRepository {
       });
       return true;
     });
+  }
+}
+
+class CouponsSeenRepository {
+  CouponsSeenRepository({required Future<SharedPreferences> prefs}) : _prefs = prefs;
+
+  final Future<SharedPreferences> _prefs;
+
+  String _kLastSeenAt(String uid) => 'coupons.lastSeenAt.$uid';
+
+  Future<DateTime?> getLastSeenAt(String uid) async {
+    final prefs = await _prefs;
+    final raw = prefs.getString(_kLastSeenAt(uid));
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw.trim());
+  }
+
+  Future<void> setLastSeenNow(String uid) async {
+    final prefs = await _prefs;
+    await prefs.setString(_kLastSeenAt(uid), DateTime.now().toIso8601String());
   }
 }
 

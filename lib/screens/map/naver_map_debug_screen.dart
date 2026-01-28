@@ -23,6 +23,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
   String _lastSignature = '';
   bool _isRequestingLocation = false;
   NOverlayImage? _placeMarkerIcon;
+  NOverlayImage? _placeMarkerIconHasCoupons;
   Place? _selectedPlace;
   String? _deepLinkPlaceId;
   bool _didApplyDeepLink = false;
@@ -37,14 +38,16 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
 
     await controller.clearOverlays(type: NOverlayType.marker);
 
-    _placeMarkerIcon ??= await _buildPlaceMarkerIcon(context);
+    _placeMarkerIcon ??= await _buildPlaceMarkerIcon(context, hasCoupons: false);
+    _placeMarkerIconHasCoupons ??=
+        await _buildPlaceMarkerIcon(context, hasCoupons: true);
 
     final overlays = <NAddableOverlay>{};
     for (final p in places) {
       final marker = NMarker(
         id: p.id,
         position: NLatLng(p.lat, p.lng),
-        icon: _placeMarkerIcon,
+        icon: p.hasCoupons ? _placeMarkerIconHasCoupons! : _placeMarkerIcon!,
         anchor: NPoint.relativeCenter,
         // Design spec was measured on a 1080px-wide device (typically ~3.0 DPR -> 360dp).
         // Convert physical px -> logical px (dp) so it looks consistent across devices.
@@ -313,7 +316,10 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
     overlay.setPosition(position);
   }
 
-  Future<NOverlayImage> _buildPlaceMarkerIcon(BuildContext context) async {
+  Future<NOverlayImage> _buildPlaceMarkerIcon(
+    BuildContext context, {
+    required bool hasCoupons,
+  }) async {
     return NOverlayImage.fromWidget(
       context: context,
       // 49px/31px are physical pixels @ ~3.0 DPR.
@@ -339,6 +345,27 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
               color: Color(0xFF10C4AE),
             ),
           ),
+          if (hasCoupons)
+            Positioned(
+              right: -2,
+              top: -2,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFFC400),
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.local_offer,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

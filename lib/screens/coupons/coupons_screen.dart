@@ -24,6 +24,7 @@ class CouponsScreen extends ConsumerStatefulWidget {
 
 class _CouponsScreenState extends ConsumerState<CouponsScreen> {
   late final TextEditingController _searchController;
+  bool _didMarkSeen = false;
 
   @override
   void initState() {
@@ -44,6 +45,9 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
     final sort = ref.watch(couponSortProvider);
     final query = ref.watch(couponSearchQueryProvider);
     final newCount = ref.watch(newCouponsCountProvider);
+    final lastSeenAsync = ref.watch(couponsLastSeenAtProvider);
+    final lastSeenAt =
+        lastSeenAsync.valueOrNull ?? DateTime.fromMillisecondsSinceEpoch(0);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
     final authUser = ref.watch(authStateProvider).valueOrNull;
@@ -57,6 +61,14 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
             : (settingsNickname?.trim().isNotEmpty == true)
                 ? settingsNickname!.trim()
                 : '닉네임';
+
+    if (!_didMarkSeen && authUser != null) {
+      _didMarkSeen = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await ref.read(couponsSeenRepositoryProvider).setLastSeenNow(authUser.uid);
+        ref.invalidate(couponsLastSeenAtProvider);
+      });
+    }
 
     if (_searchController.text != query) {
       _searchController.value = _searchController.value.copyWith(
@@ -269,9 +281,10 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, idx) {
                   final c = coupons[idx];
-                  final isNew = c.createdAt != null &&
-                      DateTime.now().difference(c.createdAt!).inHours < 24 &&
-                      c.status == CouponStatus.active;
+                  final isNew = lastSeenAsync.hasValue &&
+                      c.status == CouponStatus.active &&
+                      c.createdAt != null &&
+                      c.createdAt!.isAfter(lastSeenAt);
                   return AppCard(
                     padding: const EdgeInsets.all(AppSpacing.paddingMD),
                     onTap: () => context.push('/coupons/${c.id}'),

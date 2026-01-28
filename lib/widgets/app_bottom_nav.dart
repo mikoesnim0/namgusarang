@@ -231,8 +231,8 @@ class _CenterButton extends StatelessWidget {
             ),
             if (badgeCount > 0)
               Positioned(
-                right: 8,
-                top: 8,
+                right: 2,
+                top: 2,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
