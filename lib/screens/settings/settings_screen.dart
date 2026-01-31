@@ -233,10 +233,12 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1),
                     _SettingsTile(
-                      title: '탈퇴 하기',
+                      title: '계정 삭제 요청(탈퇴)',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('탈퇴 기능은 추후 연결됩니다.')),
+                        _confirmAndLaunch(
+                          context,
+                          title: '계정 삭제 요청(탈퇴)',
+                          url: 'https://doyakmin.com/delete-account',
                         );
                       },
                     ),
