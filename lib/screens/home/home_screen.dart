@@ -1335,9 +1335,7 @@ String _comma(int value) {
 String _percent(double value) => (value * 100).toStringAsFixed(1);
 
 class _StepsPermissionCard extends StatelessWidget {
-  const _StepsPermissionCard({required this.onGrant});
-
-  final VoidCallback onGrant;
+  const _StepsPermissionCard({required this.onGrant});  final VoidCallback onGrant;
   @override
   Widget build(BuildContext context) {
     return AppCard(
