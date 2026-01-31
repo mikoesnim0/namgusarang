@@ -71,8 +71,10 @@
 		<string>kakaotalk</string>
 	</array>
 	<key>NSMotionUsageDescription</key>
-	<string>걸음 수 측정을 위해 동작 및 피트니스 접근이 필요합니다.</string>
+	<string>오늘의 걸음 수/미션 진행을 측정하기 위해 ‘동작 및 피트니스’ 접근이 필요합니다. (걸음수 표시 및 쿠폰 발급 목적)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>내 주변 매장 표시를 위해 위치 접근이 필요합니다.</string>
+	<string>지도의 ‘현 위치’ 기능에서 주변 매장을 표시하기 위해 위치 접근이 필요합니다. 위치는 앱 사용 중에만 사용되며 저장/공유하지 않습니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>지도의 ‘현 위치’ 기능에서 주변 매장을 표시하기 위해 위치 접근이 필요합니다. 위치는 앱 사용 중에만 사용되며 저장/공유하지 않습니다.</string>
 </dict>
 </plist>
