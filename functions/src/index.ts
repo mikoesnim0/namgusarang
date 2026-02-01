@@ -170,3 +170,460 @@ export const authWithKakao = functions
     }
   });
 
+// ---------------------------------------------------------------------------
+// Friends system (uid-based, bidirectional, nickname-change supported)
+// Region must match the client: asia-northeast3
+// ---------------------------------------------------------------------------
+
+const REGION = "asia-northeast3";
+
+const nicknamePattern = /^[0-9A-Za-z가-힣]{2,12}$/;
+
+function requireAuth(context: functions.https.CallableContext): string {
+  const uid = context.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError("unauthenticated", "Login required");
+  }
+  return uid;
+}
+
+function normalizeNickname(nickname: string): { nickname: string; lower: string } {
+  const n = String(nickname ?? "").trim();
+  const compact = n.replace(/\s+/g, "");
+  return { nickname: compact, lower: compact.toLowerCase() };
+}
+
+type ProfileSnapshot = {
+  uid: string;
+  nickname: string;
+  nicknameLower: string;
+  photoUrl?: string | null;
+  level?: number | null;
+  profileIndex?: number | null;
+};
+
+async function readProfileForSnapshot(
+  tx: FirebaseFirestore.Transaction,
+  uid: string
+): Promise<ProfileSnapshot | null> {
+  const db = admin.firestore();
+  const pubRef = db.collection("public_users").doc(uid);
+  const pubSnap = await tx.get(pubRef);
+  if (pubSnap.exists) {
+    const d = pubSnap.data() || {};
+    return {
+      uid,
+      nickname: String(d.nickname ?? "").trim(),
+      nicknameLower: String(d.nicknameLower ?? "").trim(),
+      photoUrl: d.photoUrl ?? null,
+      level: typeof d.level === "number" ? d.level : null,
+      profileIndex: typeof d.profileIndex === "number" ? d.profileIndex : null,
+    };
+  }
+
+  // Fallback: read from users/{uid} (admin only).
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await tx.get(userRef);
+  if (!userSnap.exists) return null;
+  const d = userSnap.data() || {};
+  const nickname = String(d.nickname ?? "").trim();
+  const nicknameLower = String(d.nicknameLower ?? "").trim() || nickname.toLowerCase();
+  return {
+    uid,
+    nickname,
+    nicknameLower,
+    photoUrl: d.photoUrl ?? null,
+    level: typeof d.level === "number" ? d.level : null,
+    profileIndex: typeof d.profileIndex === "number" ? d.profileIndex : null,
+  };
+}
+
+function requestInRef(toUid: string, fromUid: string) {
+  return admin
+    .firestore()
+    .collection("users")
+    .doc(toUid)
+    .collection("friend_requests_in")
+    .doc(fromUid);
+}
+
+function requestOutRef(fromUid: string, toUid: string) {
+  return admin
+    .firestore()
+    .collection("users")
+    .doc(fromUid)
+    .collection("friend_requests_out")
+    .doc(toUid);
+}
+
+function friendRef(uid: string, friendUid: string) {
+  return admin.firestore().collection("users").doc(uid).collection("friends").doc(friendUid);
+}
+
+async function sendFriendRequestInternal(fromUid: string, toUid: string) {
+  const db = admin.firestore();
+  await db.runTransaction(async (tx) => {
+    const to = await readProfileForSnapshot(tx, toUid);
+    if (!to) throw new functions.https.HttpsError("not-found", "User not found");
+
+    const from = await readProfileForSnapshot(tx, fromUid);
+    if (!from) throw new functions.https.HttpsError("failed-precondition", "User profile missing");
+
+    const alreadyFriend = await tx.get(friendRef(fromUid, toUid));
+    if (alreadyFriend.exists) {
+      throw new functions.https.HttpsError("already-exists", "Already friends");
+    }
+
+    const inRef = requestInRef(toUid, fromUid);
+    const outRef = requestOutRef(fromUid, toUid);
+    const inSnap = await tx.get(inRef);
+    const outSnap = await tx.get(outRef);
+    if (inSnap.exists || outSnap.exists) {
+      throw new functions.https.HttpsError("already-exists", "Request already pending");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    tx.set(inRef, {
+      fromUid,
+      fromNickname: from.nickname,
+      fromPhotoUrl: from.photoUrl ?? null,
+      fromLevel: from.level ?? null,
+      fromProfileIndex: from.profileIndex ?? null,
+      createdAt: now,
+    });
+
+    tx.set(outRef, {
+      toUid,
+      toNickname: to.nickname,
+      toPhotoUrl: to.photoUrl ?? null,
+      createdAt: now,
+    });
+  });
+}
+
+export const ensurePublicProfile = functions
+  .region(REGION)
+  .https.onCall(async (_data, context) => {
+    const uid = requireAuth(context);
+    const db = admin.firestore();
+
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        throw new functions.https.HttpsError("failed-precondition", "User profile missing");
+      }
+
+      const u = userSnap.data() || {};
+      const nickname = String(u.nickname ?? "").trim();
+      if (!nickname) {
+        // Allow creating public_users without nickname, but skip usernames mapping.
+        tx.set(
+          db.collection("public_users").doc(uid),
+          {
+            uid,
+            nickname: "",
+            nicknameLower: "",
+            photoUrl: u.photoUrl ?? null,
+            level: typeof u.level === "number" ? u.level : null,
+            profileIndex: typeof u.profileIndex === "number" ? u.profileIndex : null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        return;
+      }
+
+      const { lower } = normalizeNickname(nickname);
+      const usernamesRef = db.collection("usernames").doc(lower);
+      const usernamesSnap = await tx.get(usernamesRef);
+      const ownerUid = String(usernamesSnap.data()?.uid ?? "");
+      if (usernamesSnap.exists && ownerUid && ownerUid !== uid) {
+        throw new functions.https.HttpsError(
+          "already-exists",
+          "Nickname is already taken. Please change nickname."
+        );
+      }
+
+      tx.set(
+        db.collection("public_users").doc(uid),
+        {
+          uid,
+          nickname,
+          nicknameLower: lower,
+          photoUrl: u.photoUrl ?? null,
+          level: typeof u.level === "number" ? u.level : null,
+          profileIndex: typeof u.profileIndex === "number" ? u.profileIndex : null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      tx.set(
+        usernamesRef,
+        {
+          uid,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: usernamesSnap.exists
+            ? (usernamesSnap.data()?.createdAt ?? admin.firestore.FieldValue.serverTimestamp())
+            : admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      tx.set(
+        userRef,
+        {
+          nicknameLower: lower,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+    return { ok: true };
+  });
+
+export const sendFriendRequestByUid = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const fromUid = requireAuth(context);
+    const toUid = String(data?.toUid ?? "").trim();
+    if (!toUid) throw new functions.https.HttpsError("invalid-argument", "toUid missing");
+    if (toUid === fromUid) {
+      throw new functions.https.HttpsError("invalid-argument", "Cannot add yourself");
+    }
+
+    await sendFriendRequestInternal(fromUid, toUid);
+
+    return { ok: true };
+  });
+
+export const sendFriendRequestByNickname = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const fromUid = requireAuth(context);
+    const rawNickname = String(data?.nickname ?? "");
+    const { nickname, lower } = normalizeNickname(rawNickname);
+    if (!nicknamePattern.test(nickname)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid nickname");
+    }
+
+    const db = admin.firestore();
+    const idxSnap = await db.collection("usernames").doc(lower).get();
+    if (!idxSnap.exists) throw new functions.https.HttpsError("not-found", "User not found");
+
+    const toUid = String(idxSnap.data()?.uid ?? "").trim();
+    if (!toUid) throw new functions.https.HttpsError("not-found", "User not found");
+    if (toUid === fromUid) {
+      throw new functions.https.HttpsError("invalid-argument", "Cannot add yourself");
+    }
+
+    await sendFriendRequestInternal(fromUid, toUid);
+    return { ok: true };
+  });
+
+export const sendFriendRequestByInviteCode = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const fromUid = requireAuth(context);
+    const code = String(data?.code ?? "").trim().toUpperCase();
+    if (!code) throw new functions.https.HttpsError("invalid-argument", "code missing");
+
+    const db = admin.firestore();
+    const q = await db.collection("users").where("friendInviteCode", "==", code).limit(1).get();
+    if (q.empty) throw new functions.https.HttpsError("not-found", "User not found");
+    const toUid = q.docs[0].id;
+    if (toUid === fromUid) {
+      throw new functions.https.HttpsError("invalid-argument", "Cannot add yourself");
+    }
+    await sendFriendRequestInternal(fromUid, toUid);
+    return { ok: true };
+  });
+
+export const acceptFriendRequest = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const toUid = requireAuth(context); // receiver
+    const fromUid = String(data?.fromUid ?? "").trim(); // sender
+    if (!fromUid) throw new functions.https.HttpsError("invalid-argument", "fromUid missing");
+    if (fromUid === toUid) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid fromUid");
+    }
+
+    const db = admin.firestore();
+    await db.runTransaction(async (tx) => {
+      const inRef = requestInRef(toUid, fromUid);
+      const outRef = requestOutRef(fromUid, toUid);
+      const inSnap = await tx.get(inRef);
+      const outSnap = await tx.get(outRef);
+      if (!inSnap.exists || !outSnap.exists) {
+        throw new functions.https.HttpsError("failed-precondition", "Request not found");
+      }
+
+      const to = await readProfileForSnapshot(tx, toUid);
+      const from = await readProfileForSnapshot(tx, fromUid);
+      if (!to || !from) {
+        throw new functions.https.HttpsError("failed-precondition", "User profile missing");
+      }
+      const now = admin.firestore.FieldValue.serverTimestamp();
+
+      tx.set(
+        friendRef(toUid, fromUid),
+        {
+          friendUid: fromUid,
+          friendNickname: from.nickname,
+          friendPhotoUrl: from.photoUrl ?? null,
+          friendLevel: from.level ?? null,
+          friendProfileIndex: from.profileIndex ?? null,
+          createdAt: now,
+          snapshotAt: now,
+        },
+        { merge: true }
+      );
+
+      tx.set(
+        friendRef(fromUid, toUid),
+        {
+          friendUid: toUid,
+          friendNickname: to.nickname,
+          friendPhotoUrl: to.photoUrl ?? null,
+          friendLevel: to.level ?? null,
+          friendProfileIndex: to.profileIndex ?? null,
+          createdAt: now,
+          snapshotAt: now,
+        },
+        { merge: true }
+      );
+
+      tx.delete(inRef);
+      tx.delete(outRef);
+    });
+
+    return { ok: true };
+  });
+
+export const declineFriendRequest = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const toUid = requireAuth(context); // receiver
+    const fromUid = String(data?.fromUid ?? "").trim();
+    if (!fromUid) throw new functions.https.HttpsError("invalid-argument", "fromUid missing");
+
+    const db = admin.firestore();
+    await db.runTransaction(async (tx) => {
+      tx.delete(requestInRef(toUid, fromUid));
+      tx.delete(requestOutRef(fromUid, toUid));
+    });
+    return { ok: true };
+  });
+
+export const cancelFriendRequest = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const fromUid = requireAuth(context); // sender
+    const toUid = String(data?.toUid ?? "").trim();
+    if (!toUid) throw new functions.https.HttpsError("invalid-argument", "toUid missing");
+
+    const db = admin.firestore();
+    await db.runTransaction(async (tx) => {
+      tx.delete(requestOutRef(fromUid, toUid));
+      tx.delete(requestInRef(toUid, fromUid));
+    });
+    return { ok: true };
+  });
+
+export const removeFriend = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const uid = requireAuth(context);
+    const friendUid = String(data?.friendUid ?? "").trim();
+    if (!friendUid) throw new functions.https.HttpsError("invalid-argument", "friendUid missing");
+    if (friendUid === uid) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid friendUid");
+    }
+
+    const db = admin.firestore();
+    await db.runTransaction(async (tx) => {
+      tx.delete(friendRef(uid, friendUid));
+      tx.delete(friendRef(friendUid, uid));
+    });
+    return { ok: true };
+  });
+
+export const changeNickname = functions
+  .region(REGION)
+  .https.onCall(async (data, context) => {
+    const uid = requireAuth(context);
+    const rawNickname = String(data?.nickname ?? "");
+    const { nickname, lower } = normalizeNickname(rawNickname);
+    if (!nicknamePattern.test(nickname)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid nickname");
+    }
+
+    const db = admin.firestore();
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        throw new functions.https.HttpsError("failed-precondition", "User profile missing");
+      }
+
+      const current = userSnap.data() || {};
+      const oldLower = String(current.nicknameLower ?? "").trim();
+
+      const usernameRef = db.collection("usernames").doc(lower);
+      const usernameSnap = await tx.get(usernameRef);
+      const ownerUid = String(usernameSnap.data()?.uid ?? "");
+      if (usernameSnap.exists && ownerUid && ownerUid !== uid) {
+        throw new functions.https.HttpsError("already-exists", "Nickname is already taken");
+      }
+
+      const now = admin.firestore.FieldValue.serverTimestamp();
+
+      tx.set(
+        usernameRef,
+        {
+          uid,
+          updatedAt: now,
+          createdAt: usernameSnap.exists
+            ? (usernameSnap.data()?.createdAt ?? now)
+            : now,
+        },
+        { merge: true }
+      );
+
+      tx.set(
+        userRef,
+        {
+          nickname,
+          nicknameLower: lower,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      tx.set(
+        db.collection("public_users").doc(uid),
+        {
+          uid,
+          nickname,
+          nicknameLower: lower,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      if (oldLower && oldLower !== lower) {
+        const oldRef = db.collection("usernames").doc(oldLower);
+        const oldSnap = await tx.get(oldRef);
+        const oldOwner = String(oldSnap.data()?.uid ?? "");
+        if (oldSnap.exists && oldOwner === uid) {
+          tx.delete(oldRef);
+        }
+      }
+    });
+
+    return { ok: true };
+  });
