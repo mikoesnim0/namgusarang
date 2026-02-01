@@ -68,7 +68,7 @@ class PlaceInfoPopup extends StatelessWidget {
                         variant: ChipVariant.highlight,
                         onTap: () {
                           onClose();
-                          context.go(
+                          context.push(
                             '/coupons?placeId=${Uri.encodeComponent(place.id)}',
                           );
                         },

@@ -27,6 +27,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
   Place? _selectedPlace;
   String? _deepLinkPlaceId;
   bool _didApplyDeepLink = false;
+  bool _didAutoLocate = false;
 
   Future<void> _syncMarkers(List<Place> places) async {
     final controller = _controller;
@@ -144,6 +145,11 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                   if (places != null) {
                     await _syncMarkers(places);
                     await _tryApplyDeepLink(places);
+                  }
+
+                  if (!_didAutoLocate && mounted) {
+                    _didAutoLocate = true;
+                    await _handleMyLocationTap(context);
                   }
                 },
               ),

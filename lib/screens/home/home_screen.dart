@@ -186,6 +186,7 @@ class HomeScreen extends ConsumerWidget {
                     milestones: home.milestones,
                     completed: home.completedMilestones,
                     todayIndex: todayIndex,
+                    daysLeft: home.cycle.daysLeft,
                   ),
                   const SizedBox(height: 12),
                   _TodayStepsCard(
@@ -194,67 +195,9 @@ class HomeScreen extends ConsumerWidget {
                     remainingSteps: home.remainingSteps,
                     progress: home.progress,
                   ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.go('/walker'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary500,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 6,
-                        horizontal: AppSpacing.paddingMD,
-                      ),
-                    ),
-                    child: const Text('Walker 모니터 열기'),
-                  ),
                   _CouponPlacesMapCard(
                     placesAsync: ref.watch(activePlacesProvider),
                     onOpenFullMap: () => context.go('/map'),
-                  ),
-                  const SizedBox(height: 12),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('오늘의 미션', style: AppTypography.labelLarge),
-                        const SizedBox(height: AppSpacing.paddingSM),
-                        Text(
-                          home.mission.title,
-                          style: AppTypography.bodyLarge,
-                        ),
-                        const SizedBox(height: AppSpacing.paddingSM),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusFull,
-                          ),
-                          child: LinearProgressIndicator(
-                            value: home.progress,
-                            minHeight: 8,
-                            backgroundColor: AppColors.gray100,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.primary500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.paddingSM),
-                        Row(
-                          children: [
-                            Text(
-                              '${(home.progress * 100).round()}%',
-                              style: AppTypography.bodySmall,
-                            ),
-                            const Spacer(),
-                            Text(
-                              home.remainingSteps == 0
-                                  ? '완료!'
-                                  : '${home.remainingSteps}보 남았어요',
-                              style: AppTypography.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 12),
                   if (showTodoAndDebug) ...[
@@ -582,14 +525,19 @@ class _SuccessDaysCard extends StatelessWidget {
     required this.milestones,
     required this.completed,
     required this.todayIndex,
+    required this.daysLeft,
   });
 
   final List<int> milestones;
   final List<int> completed;
   final int todayIndex;
+  final int daysLeft;
 
   @override
   Widget build(BuildContext context) {
+    final clamped = daysLeft.clamp(0, 99);
+    final text = clamped.toString().padLeft(2, '0');
+
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
       margin: EdgeInsets.zero,
@@ -597,6 +545,21 @@ class _SuccessDaysCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('성공한 날', style: AppTypography.labelLarge),
+          const SizedBox(height: 8),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('이번 미션 종료까지', style: AppTypography.bodySmall),
+                const SizedBox(width: 6),
+                _DigitBox(digit: text[0]),
+                const SizedBox(width: 4),
+                _DigitBox(digit: text[1]),
+                const SizedBox(width: 6),
+                Text('일 남았어요!', style: AppTypography.bodySmall),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
           Center(
             child: Text(
@@ -631,6 +594,7 @@ class _SuccessDaysCard extends StatelessWidget {
                       filled: n <= todayIndex && completed.contains(n),
                       isToday: n == todayIndex,
                       isFuture: n > todayIndex,
+                      isFailed: n < todayIndex && !completed.contains(n),
                       size: size,
                     ),
                     if (n != milestones.last) const SizedBox(width: spacing),
@@ -651,6 +615,7 @@ class _SuccessDayCircle extends StatelessWidget {
     required this.filled,
     required this.isToday,
     required this.isFuture,
+    required this.isFailed,
     required this.size,
   });
 
@@ -658,6 +623,7 @@ class _SuccessDayCircle extends StatelessWidget {
   final bool filled;
   final bool isToday;
   final bool isFuture;
+  final bool isFailed;
   final double size;
 
   @override
@@ -666,18 +632,24 @@ class _SuccessDayCircle extends StatelessWidget {
         ? Colors.red.shade400
         : isFuture
         ? AppColors.gray200
+        : isFailed
+        ? Colors.red.shade200
         : AppColors.border;
 
     final bgColor = isToday
         ? (filled ? AppColors.primary500 : AppColors.surface)
         : isFuture
         ? AppColors.gray50
+        : isFailed
+        ? Colors.red.shade50
         : (filled ? AppColors.primary500 : AppColors.gray100);
 
     final fgColor = isToday
         ? (filled ? AppColors.textOnPrimary : AppColors.textSecondary)
         : isFuture
         ? AppColors.gray400
+        : isFailed
+        ? Colors.red.shade700
         : (filled ? AppColors.textOnPrimary : AppColors.textSecondary);
 
     return Container(
@@ -690,7 +662,7 @@ class _SuccessDayCircle extends StatelessWidget {
         border: Border.all(color: borderColor, width: isToday ? 2 : 1),
       ),
       child: Text(
-        text,
+        isFailed ? '✕' : text,
         style: AppTypography.labelSmall.copyWith(color: fgColor),
       ),
     );
@@ -1035,6 +1007,7 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
   bool _isRequestingLocation = false;
   NOverlayImage? _placeMarkerIcon;
   Place? _selectedPlace;
+  bool _didAutoLocate = false;
 
   @override
   void didUpdateWidget(covariant _PlacesMiniMap oldWidget) {
@@ -1095,6 +1068,10 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
           onMapReady: (controller) async {
             _controller = controller;
             await _syncMarkers();
+            if (!_didAutoLocate && mounted) {
+              _didAutoLocate = true;
+              await _handleMyLocationTap(context);
+            }
           },
         ),
         if (_selectedPlace != null)

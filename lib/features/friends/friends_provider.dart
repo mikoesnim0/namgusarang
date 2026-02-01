@@ -12,7 +12,7 @@ final publicUserSearchProvider = FutureProvider<List<PublicUser>>((ref) async {
   if (q.isEmpty) return const [];
   return ref
       .read(friendsRepositoryProvider)
-      .searchPublicUsersByPrefix(prefix: q);
+      .searchPublicUsersByPrefix(prefix: q, limit: 20);
 });
 
 final friendsRepositoryProvider = Provider<FriendsRepository>((ref) {
