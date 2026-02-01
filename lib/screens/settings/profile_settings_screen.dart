@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
+import 'package:hangookji_namgu/features/friends/friends_provider.dart';
 import '../../features/settings/settings_model.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../theme/app_theme.dart';
@@ -24,7 +25,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nicknameController;
 
-  AgeRange? _ageRange;
   Gender? _gender;
   bool _didHydrate = false;
 
@@ -40,14 +40,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     super.dispose();
   }
 
-  AgeRange? _parseAgeRange(String? raw) {
-    if (raw == null) return null;
-    for (final v in AgeRange.values) {
-      if (v.name == raw) return v;
-    }
-    return null;
-  }
-
   Gender? _parseGender(String? raw) {
     if (raw == null) return null;
     for (final v in Gender.values) {
@@ -60,7 +52,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     if (!_formKey.currentState!.validate()) return;
     final next = current.copyWith(
       nickname: _nicknameController.text.trim(),
-      ageRange: _ageRange ?? current.ageRange,
       gender: _gender ?? current.gender,
     );
     await ref.read(settingsControllerProvider.notifier).updateProfile(next);
@@ -71,24 +62,18 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       if (user != null) {
         final users = ref.read(usersRepositoryProvider);
         final nickname = next.nickname.trim();
-        final available = await users.isNicknameAvailable(
-          nickname,
-          ignoreUid: user.uid,
-        );
-        if (!available) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.')),
-            );
-          }
-          return;
-        }
         await users.updateProfile(
           uid: user.uid,
           nickname: nickname,
           gender: next.gender.name,
-          ageRange: next.ageRange.name,
         );
+
+        // Keep `public_users` in sync for friend search (best-effort).
+        try {
+          await ref.read(friendsRepositoryProvider).ensurePublicProfile();
+        } catch (_) {
+          // ignore: do not block profile save
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -124,16 +109,16 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           final p = settings.profile;
           if (!_didHydrate) {
             final docNickname = (userDoc?['nickname'] as String?)?.trim();
-            final docAgeRange = userDoc?['ageRange'] as String?;
             final docGender = userDoc?['gender'] as String?;
 
             _nicknameController.text =
                 (docNickname?.isNotEmpty == true) ? docNickname! : p.nickname;
 
-            _ageRange = _parseAgeRange(docAgeRange) ?? p.ageRange;
             _gender = _parseGender(docGender) ?? p.gender;
             _didHydrate = true;
           }
+          final birthYear = (userDoc?['birthdate'] as String?)?.trim() ?? '';
+          final birthYearLabel = birthYear.isNotEmpty ? '${birthYear}년' : '미설정';
           final email = (authUser?.email?.trim().isNotEmpty == true)
               ? authUser!.email!.trim()
               : ((userDoc?['email'] as String?)?.trim().isNotEmpty == true
@@ -211,18 +196,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                           },
                         ),
                         const SizedBox(height: AppSpacing.paddingMD),
-                        _DropdownRow<AgeRange>(
+                        AppInput(
                           label: '연령대',
-                          value: _ageRange ?? p.ageRange,
-                          items: AgeRange.values,
-                          itemLabel: (v) => switch (v) {
-                            AgeRange.teen => '10대',
-                            AgeRange.twenties => '20대',
-                            AgeRange.thirties => '30대',
-                            AgeRange.forties => '40대',
-                            AgeRange.fiftiesPlus => '50대+',
-                          },
-                          onChanged: (v) => setState(() => _ageRange = v),
+                          placeholder: '출생연도',
+                          initialValue: birthYearLabel,
+                          readOnly: true,
                         ),
                         const SizedBox(height: AppSpacing.paddingMD),
                         _DropdownRow<Gender>(

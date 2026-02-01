@@ -207,6 +207,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           return '사용자를 찾을 수 없습니다.';
         case 'already-exists':
           return '이미 친구이거나 요청이 진행중입니다.';
+        case 'failed-precondition':
+          return '동일한 닉네임 사용자가 여러 명 있습니다. 검색 결과에서 선택해주세요.';
         case 'invalid-argument':
           return '입력값을 확인해주세요.';
         case 'unauthenticated':

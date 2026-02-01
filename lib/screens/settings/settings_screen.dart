@@ -15,6 +15,10 @@ import '../../theme/app_colors.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  static const _supportEmail = 'support@namgusarang.app';
+  // TODO: Replace with the dedicated Walker홀릭 account-deletion page URL when ready.
+  static const _deleteAccountUrl = 'https://doyakmin.com/delete-account';
+
   Future<void> _launchExternal(
     BuildContext context, {
     required String title,
@@ -27,6 +31,31 @@ class SettingsScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('링크를 열 수 없습니다.')));
+    }
+  }
+
+  Future<void> _openSupportMail(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      queryParameters: {
+        'subject': '[Walker홀릭] 문의',
+        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+1)',
+      },
+    );
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('메일 앱을 열 수 없습니다')));
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('메일 앱 열기 실패')));
+      }
     }
   }
 
@@ -204,11 +233,7 @@ class SettingsScreen extends ConsumerWidget {
                     _SettingsTile(
                       title: '문의 하기',
                       onTap: () {
-                        _launchExternal(
-                          context,
-                          title: '문의하기',
-                          url: 'https://doyakmin.com/contact',
-                        );
+                        _openSupportMail(context);
                       },
                     ),
                     const Divider(height: 1),
@@ -218,7 +243,7 @@ class SettingsScreen extends ConsumerWidget {
                         _launchExternal(
                           context,
                           title: '계정 삭제 요청(탈퇴)',
-                          url: 'https://doyakmin.com/delete-account',
+                          url: _deleteAccountUrl,
                         );
                       },
                     ),

@@ -318,7 +318,7 @@ export const ensurePublicProfile = functions
       const u = userSnap.data() || {};
       const nickname = String(u.nickname ?? "").trim();
       if (!nickname) {
-        // Allow creating public_users without nickname, but skip usernames mapping.
+        // Allow creating public_users without nickname.
         tx.set(
           db.collection("public_users").doc(uid),
           {
@@ -336,16 +336,6 @@ export const ensurePublicProfile = functions
       }
 
       const { lower } = normalizeNickname(nickname);
-      const usernamesRef = db.collection("usernames").doc(lower);
-      const usernamesSnap = await tx.get(usernamesRef);
-      const ownerUid = String(usernamesSnap.data()?.uid ?? "");
-      if (usernamesSnap.exists && ownerUid && ownerUid !== uid) {
-        throw new functions.https.HttpsError(
-          "already-exists",
-          "Nickname is already taken. Please change nickname."
-        );
-      }
-
       tx.set(
         db.collection("public_users").doc(uid),
         {
@@ -356,18 +346,6 @@ export const ensurePublicProfile = functions
           level: typeof u.level === "number" ? u.level : null,
           profileIndex: typeof u.profileIndex === "number" ? u.profileIndex : null,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      tx.set(
-        usernamesRef,
-        {
-          uid,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          createdAt: usernamesSnap.exists
-            ? (usernamesSnap.data()?.createdAt ?? admin.firestore.FieldValue.serverTimestamp())
-            : admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
@@ -411,10 +389,21 @@ export const sendFriendRequestByNickname = functions
     }
 
     const db = admin.firestore();
-    const idxSnap = await db.collection("usernames").doc(lower).get();
-    if (!idxSnap.exists) throw new functions.https.HttpsError("not-found", "User not found");
+    const q = await db
+      .collection("public_users")
+      .where("nicknameLower", "==", lower)
+      .limit(3)
+      .get();
+    if (q.empty) throw new functions.https.HttpsError("not-found", "User not found");
+    if (q.docs.length > 1) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Multiple users match this nickname. Please select from search results."
+      );
+    }
 
-    const toUid = String(idxSnap.data()?.uid ?? "").trim();
+    const doc = q.docs[0];
+    const toUid = String(doc.data()?.uid ?? doc.id).trim();
     if (!toUid) throw new functions.https.HttpsError("not-found", "User not found");
     if (toUid === fromUid) {
       throw new functions.https.HttpsError("invalid-argument", "Cannot add yourself");
@@ -570,29 +559,7 @@ export const changeNickname = functions
         throw new functions.https.HttpsError("failed-precondition", "User profile missing");
       }
 
-      const current = userSnap.data() || {};
-      const oldLower = String(current.nicknameLower ?? "").trim();
-
-      const usernameRef = db.collection("usernames").doc(lower);
-      const usernameSnap = await tx.get(usernameRef);
-      const ownerUid = String(usernameSnap.data()?.uid ?? "");
-      if (usernameSnap.exists && ownerUid && ownerUid !== uid) {
-        throw new functions.https.HttpsError("already-exists", "Nickname is already taken");
-      }
-
       const now = admin.firestore.FieldValue.serverTimestamp();
-
-      tx.set(
-        usernameRef,
-        {
-          uid,
-          updatedAt: now,
-          createdAt: usernameSnap.exists
-            ? (usernameSnap.data()?.createdAt ?? now)
-            : now,
-        },
-        { merge: true }
-      );
 
       tx.set(
         userRef,
@@ -614,15 +581,6 @@ export const changeNickname = functions
         },
         { merge: true }
       );
-
-      if (oldLower && oldLower !== lower) {
-        const oldRef = db.collection("usernames").doc(oldLower);
-        const oldSnap = await tx.get(oldRef);
-        const oldOwner = String(oldSnap.data()?.uid ?? "");
-        if (oldSnap.exists && oldOwner === uid) {
-          tx.delete(oldRef);
-        }
-      }
     });
 
     return { ok: true };
