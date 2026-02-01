@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 
 import '../../features/auth/auth_providers.dart';
 import '../../features/friends/friends_model.dart';
@@ -28,13 +29,23 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final _inviteCodeController = TextEditingController();
   String _friendQuery = '';
   _AddMode _addMode = _AddMode.nickname;
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
     _controller.dispose();
     _friendSearchController.dispose();
     _inviteCodeController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onNicknameSearchChanged(String v) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      ref.read(friendUserSearchQueryProvider.notifier).state = v;
+    });
   }
 
   String _friendlyFunctionsError(Object e) {
@@ -90,6 +101,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final inviteInfo = ref.watch(inviteInfoProvider);
     final authUid = ref.watch(authStateProvider).valueOrNull?.uid;
     final searchAsync = ref.watch(publicUserSearchProvider);
+    final outgoingReqs =
+        ref.watch(outgoingFriendRequestsStreamProvider).valueOrNull ?? const [];
+    final incomingReqs =
+        ref.watch(incomingFriendRequestsStreamProvider).valueOrNull ?? const [];
 
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -202,6 +217,16 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       onSubmit: _submitAdd,
                       searchAsync: searchAsync,
                       currentUid: authUid,
+                      existingFriendUids: friends
+                          .map((f) => f.friendUid)
+                          .toSet(),
+                      outgoingRequestUids: outgoingReqs
+                          .map((r) => r.toUid)
+                          .toSet(),
+                      incomingRequestUids: incomingReqs
+                          .map((r) => r.fromUid)
+                          .toSet(),
+                      onNicknameChanged: _onNicknameSearchChanged,
                     ),
                     const SizedBox(height: 10),
                     Container(
@@ -329,6 +354,10 @@ class _AddFriendCard extends StatelessWidget {
     required this.onSubmit,
     required this.searchAsync,
     required this.currentUid,
+    required this.existingFriendUids,
+    required this.outgoingRequestUids,
+    required this.incomingRequestUids,
+    required this.onNicknameChanged,
   });
 
   final _AddMode mode;
@@ -338,6 +367,10 @@ class _AddFriendCard extends StatelessWidget {
   final VoidCallback onSubmit;
   final AsyncValue<List<PublicUser>> searchAsync;
   final String? currentUid;
+  final Set<String> existingFriendUids;
+  final Set<String> outgoingRequestUids;
+  final Set<String> incomingRequestUids;
+  final ValueChanged<String> onNicknameChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +412,7 @@ class _AddFriendCard extends StatelessWidget {
               hintText: '닉네임으로 친구 요청',
               onSubmit: onSubmit,
               onChanged: (v) {
-                ref.read(friendUserSearchQueryProvider.notifier).state = v;
+                onNicknameChanged(v);
               },
             )
           else
@@ -392,6 +425,9 @@ class _AddFriendCard extends StatelessWidget {
             _SearchSuggestions(
               searchAsync: searchAsync,
               currentUid: currentUid,
+              existingFriendUids: existingFriendUids,
+              outgoingRequestUids: outgoingRequestUids,
+              incomingRequestUids: incomingRequestUids,
             ),
         ],
       ),
@@ -500,15 +536,28 @@ class _SearchSuggestions extends ConsumerWidget {
   const _SearchSuggestions({
     required this.searchAsync,
     required this.currentUid,
+    required this.existingFriendUids,
+    required this.outgoingRequestUids,
+    required this.incomingRequestUids,
   });
 
   final AsyncValue<List<PublicUser>> searchAsync;
   final String? currentUid;
+  final Set<String> existingFriendUids;
+  final Set<String> outgoingRequestUids;
+  final Set<String> incomingRequestUids;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return searchAsync.when(
-      loading: () => const SizedBox(height: 0),
+      loading: () {
+        final q = ref.watch(friendUserSearchQueryProvider).trim();
+        if (q.isEmpty) return const SizedBox(height: 0);
+        return const Padding(
+          padding: EdgeInsets.only(top: 10),
+          child: LinearProgressIndicator(minHeight: 2),
+        );
+      },
       error: (_, __) => const SizedBox(height: 0),
       data: (items) {
         final q = ref.watch(friendUserSearchQueryProvider).trim();
@@ -538,30 +587,7 @@ class _SearchSuggestions extends ConsumerWidget {
                         vertical: AppSpacing.paddingSM,
                       ),
                       margin: const EdgeInsets.only(bottom: 8),
-                      onTap: () async {
-                        final repo = ref.read(friendsRepositoryProvider);
-                        try {
-                          await repo.ensurePublicProfile();
-                          await repo.sendRequestByUid(u.uid);
-                          ref
-                                  .read(friendUserSearchQueryProvider.notifier)
-                                  .state =
-                              '';
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${u.nickname}님에게 요청을 보냈습니다.'),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('요청 실패: $e')),
-                            );
-                          }
-                        }
-                      },
+                      onTap: _tapHandlerFor(context, ref, u),
                       child: Row(
                         children: [
                           const CircleAvatar(
@@ -582,12 +608,11 @@ class _SearchSuggestions extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Text(
-                            '요청',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.primary700,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          _StatusChip(
+                            uid: u.uid,
+                            existingFriendUids: existingFriendUids,
+                            outgoingRequestUids: outgoingRequestUids,
+                            incomingRequestUids: incomingRequestUids,
                           ),
                         ],
                       ),
@@ -597,6 +622,92 @@ class _SearchSuggestions extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  VoidCallback? _tapHandlerFor(
+    BuildContext context,
+    WidgetRef ref,
+    PublicUser u,
+  ) {
+    if (existingFriendUids.contains(u.uid)) return null;
+    if (outgoingRequestUids.contains(u.uid)) return null;
+    if (incomingRequestUids.contains(u.uid)) {
+      return () => context.push('/friends/requests');
+    }
+    return () async {
+      final repo = ref.read(friendsRepositoryProvider);
+      try {
+        await repo.ensurePublicProfile();
+        await repo.sendRequestByUid(u.uid);
+        ref.read(friendUserSearchQueryProvider.notifier).state = '';
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${u.nickname}님에게 요청을 보냈습니다.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('요청 실패: $e')));
+        }
+      }
+    };
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.uid,
+    required this.existingFriendUids,
+    required this.outgoingRequestUids,
+    required this.incomingRequestUids,
+  });
+
+  final String uid;
+  final Set<String> existingFriendUids;
+  final Set<String> outgoingRequestUids;
+  final Set<String> incomingRequestUids;
+
+  @override
+  Widget build(BuildContext context) {
+    String label;
+    Color bg;
+    Color fg;
+
+    if (existingFriendUids.contains(uid)) {
+      label = '친구';
+      bg = AppColors.gray100;
+      fg = AppColors.textSecondary;
+    } else if (outgoingRequestUids.contains(uid)) {
+      label = '요청됨';
+      bg = AppColors.gray100;
+      fg = AppColors.textSecondary;
+    } else if (incomingRequestUids.contains(uid)) {
+      label = '받은요청';
+      bg = Colors.red.shade50;
+      fg = Colors.red.shade700;
+    } else {
+      label = '요청';
+      bg = AppColors.primary100;
+      fg = AppColors.primary700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.labelSmall.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

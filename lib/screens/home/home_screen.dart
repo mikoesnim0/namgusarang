@@ -328,15 +328,21 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _issueCouponForStepsMission(BuildContext context, WidgetRef ref) async {
+  Future<void> _issueCouponForStepsMission(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) return;
 
     // Pick a place (coupon-enabled first).
-    final places = ref.read(activePlacesProvider).valueOrNull ?? const <Place>[];
+    final places =
+        ref.read(activePlacesProvider).valueOrNull ?? const <Place>[];
     final place = places.firstWhere(
       (p) => p.hasCoupons,
-      orElse: () => places.isNotEmpty ? places.first : const Place(id: 'place_001', name: '샘플매장', lat: 0, lng: 0),
+      orElse: () => places.isNotEmpty
+          ? places.first
+          : const Place(id: 'place_001', name: '샘플매장', lat: 0, lng: 0),
     );
 
     final templates = const [
@@ -357,7 +363,9 @@ class HomeScreen extends ConsumerWidget {
     final code = (math.Random().nextInt(900000) + 100000).toString();
     final expiresAt = now.add(const Duration(days: 7));
 
-    final issued = await ref.read(couponsRepositoryProvider).issueCouponForUser(
+    final issued = await ref
+        .read(couponsRepositoryProvider)
+        .issueCouponForUser(
           uid: user.uid,
           couponId: issueKey,
           data: {
@@ -610,10 +618,19 @@ class _SuccessDaysCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   for (final n in milestones) ...[
+                    // Only show "completed" for past/today.
+                    // Never mark future days as completed even if the dummy data contains them.
+                    //
+                    // States:
+                    // - past completed: teal filled
+                    // - past not completed: gray filled
+                    // - today: red ring (filled teal if completed)
+                    // - future: light gray (disabled)
                     _SuccessDayCircle(
                       text: '$n',
-                      filled: completed.contains(n),
+                      filled: n <= todayIndex && completed.contains(n),
                       isToday: n == todayIndex,
+                      isFuture: n > todayIndex,
                       size: size,
                     ),
                     if (n != milestones.last) const SizedBox(width: spacing),
@@ -633,19 +650,36 @@ class _SuccessDayCircle extends StatelessWidget {
     required this.text,
     required this.filled,
     required this.isToday,
+    required this.isFuture,
     required this.size,
   });
 
   final String text;
   final bool filled;
   final bool isToday;
+  final bool isFuture;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isToday ? Colors.red.shade400 : AppColors.border;
-    final bgColor = filled ? AppColors.primary500 : AppColors.gray100;
-    final fgColor = filled ? AppColors.textOnPrimary : AppColors.textSecondary;
+    final borderColor = isToday
+        ? Colors.red.shade400
+        : isFuture
+        ? AppColors.gray200
+        : AppColors.border;
+
+    final bgColor = isToday
+        ? (filled ? AppColors.primary500 : AppColors.surface)
+        : isFuture
+        ? AppColors.gray50
+        : (filled ? AppColors.primary500 : AppColors.gray100);
+
+    final fgColor = isToday
+        ? (filled ? AppColors.textOnPrimary : AppColors.textSecondary)
+        : isFuture
+        ? AppColors.gray400
+        : (filled ? AppColors.textOnPrimary : AppColors.textSecondary);
+
     return Container(
       width: size,
       height: size,
@@ -657,9 +691,7 @@ class _SuccessDayCircle extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: AppTypography.labelSmall.copyWith(
-          color: fgColor,
-        ),
+        style: AppTypography.labelSmall.copyWith(color: fgColor),
       ),
     );
   }
@@ -1039,9 +1071,7 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
         if (!mounted) return;
         setState(() => _selectedPlace = p);
       });
-      overlays.add(
-        marker,
-      );
+      overlays.add(marker);
     }
     if (overlays.isNotEmpty) {
       await controller.addOverlayAll(overlays);
@@ -1099,8 +1129,9 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
           right: 12,
           bottom: 12,
           child: ElevatedButton.icon(
-            onPressed:
-                _isRequestingLocation ? null : () => _handleMyLocationTap(context),
+            onPressed: _isRequestingLocation
+                ? null
+                : () => _handleMyLocationTap(context),
             icon: const Icon(Icons.my_location, size: 18),
             label: const Text('현 위치'),
             style: ElevatedButton.styleFrom(
@@ -1335,7 +1366,8 @@ String _comma(int value) {
 String _percent(double value) => (value * 100).toStringAsFixed(1);
 
 class _StepsPermissionCard extends StatelessWidget {
-  const _StepsPermissionCard({required this.onGrant});  final VoidCallback onGrant;
+  const _StepsPermissionCard({required this.onGrant});
+  final VoidCallback onGrant;
   @override
   Widget build(BuildContext context) {
     return AppCard(
