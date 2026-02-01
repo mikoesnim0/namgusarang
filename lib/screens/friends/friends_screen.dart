@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/auth_providers.dart';
@@ -22,45 +24,68 @@ class FriendsScreen extends ConsumerStatefulWidget {
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   final _controller = TextEditingController();
   final _friendSearchController = TextEditingController();
+  final _inviteCodeController = TextEditingController();
   String _friendQuery = '';
+  _AddMode _addMode = _AddMode.nickname;
 
   @override
   void dispose() {
     _controller.dispose();
     _friendSearchController.dispose();
+    _inviteCodeController.dispose();
     super.dispose();
   }
 
-  void _submitNickname() {
-    final nickname = _controller.text.trim();
-    final ok = ref
-        .read(friendRequestsControllerProvider.notifier)
-        .sendRequestByNickname(nickname);
-    if (ok) {
-      _controller.clear();
+  String _friendlyFunctionsError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      switch (e.code) {
+        case 'not-found':
+          return '사용자를 찾을 수 없습니다.';
+        case 'already-exists':
+          return '이미 친구이거나 요청이 진행중입니다.';
+        case 'invalid-argument':
+          return '입력값을 확인해주세요.';
+        case 'unauthenticated':
+          return '로그인이 필요합니다.';
+        default:
+          return '오류가 발생했습니다. (${e.code})';
+      }
+    }
+    return '오류가 발생했습니다.';
+  }
+
+  Future<void> _submitAdd() async {
+    final repo = ref.read(friendsRepositoryProvider);
+    try {
+      await repo.ensurePublicProfile();
+      if (_addMode == _AddMode.nickname) {
+        final nickname = _controller.text.trim();
+        await repo.sendRequestByNickname(nickname);
+        _controller.clear();
+      } else {
+        final code = _inviteCodeController.text.trim();
+        await repo.sendRequestByInviteCode(code);
+        _inviteCodeController.clear();
+      }
+
+      if (!mounted) return;
       FocusScope.of(context).unfocus();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('친구 요청을 보냈습니다.')),
       );
-      return;
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyFunctionsError(e))),
+      );
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('2~12자 한글/영문/숫자 닉네임을 입력하세요')),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final friends = ref.watch(friendsControllerProvider);
-    final requests = ref.watch(friendRequestsControllerProvider);
-    final pendingCount = requests.sent.length + requests.received.length;
-    final visibleFriends = _friendQuery.trim().isEmpty
-        ? friends
-        : friends
-            .where((f) =>
-                f.nickname.toLowerCase().contains(_friendQuery.toLowerCase()))
-            .toList();
+    final friendsAsync = ref.watch(friendsStreamProvider);
+    final incomingCount = ref.watch(incomingFriendRequestsCountProvider);
+    final inviteInfo = ref.watch(inviteInfoProvider);
 
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -123,9 +148,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 child: TextButton(
                   onPressed: () => context.push('/friends/requests'),
                   child: Text(
-                    pendingCount > 0 ? '대기 $pendingCount' : '대기',
+                    incomingCount > 0 ? '대기 $incomingCount' : '대기',
                     style: AppTypography.bodySmall.copyWith(
-                      color: pendingCount > 0
+                      color: incomingCount > 0
                           ? AppColors.primary500
                           : AppColors.textSecondary,
                     ),
@@ -136,88 +161,258 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           ),
         ),
       ),
-      body: ListView.separated(
-        padding: AppTheme.screenPadding.copyWith(bottom: 120),
-        itemCount: visibleFriends.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, idx) {
-          if (idx == 0) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SearchBar(
-                  controller: _controller,
-                  onSubmit: _submitNickname,
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.gray100,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: AppColors.textSecondary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _friendSearchController,
-                          decoration: InputDecoration(
-                            hintText: '친구 검색',
-                            hintStyle: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (v) =>
-                              setState(() => _friendQuery = v.trim()),
-                        ),
-                      ),
-                      if (_friendQuery.trim().isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () {
-                            _friendSearchController.clear();
-                            setState(() => _friendQuery = '');
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
+      body: friendsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.paddingMD),
+            child: Text('친구 로드 실패: $e', textAlign: TextAlign.center),
+          ),
+        ),
+        data: (friends) {
+          final visibleFriends = _friendQuery.trim().isEmpty
+              ? friends
+              : friends
+                  .where((f) => f.nickname
+                      .toLowerCase()
+                      .contains(_friendQuery.toLowerCase()))
+                  .toList();
+
+          return ListView.separated(
+            padding: AppTheme.screenPadding.copyWith(bottom: 120),
+            itemCount: visibleFriends.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, idx) {
+              if (idx == 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Spacer(),
-                    Text(
-                      '${visibleFriends.length}명',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                    _InviteCard(info: inviteInfo),
+                    const SizedBox(height: 12),
+                    _AddFriendCard(
+                      mode: _addMode,
+                      nicknameController: _controller,
+                      inviteCodeController: _inviteCodeController,
+                      onModeChanged: (m) => setState(() => _addMode = m),
+                      onSubmit: _submitAdd,
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray100,
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search,
+                              color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _friendSearchController,
+                              decoration: InputDecoration(
+                                hintText: '친구 검색',
+                                hintStyle: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textHint,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                              onChanged: (v) =>
+                                  setState(() => _friendQuery = v.trim()),
+                            ),
+                          ),
+                          if (_friendQuery.trim().isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () {
+                                _friendSearchController.clear();
+                                setState(() => _friendQuery = '');
+                              },
+                            ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        Text(
+                          '${visibleFriends.length}명',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
-                ),
-              ],
-            );
-          }
+                );
+              }
 
-          final friend = visibleFriends[idx - 1];
-          return _FriendCard(friend: friend);
+              final friend = visibleFriends[idx - 1];
+              return _FriendCard(friend: friend);
+            },
+          );
         },
       ),
     );
   }
 }
 
-class _SearchBar extends StatelessWidget {
-  const _SearchBar({
+enum _AddMode { nickname, inviteCode }
+
+class _InviteCard extends StatelessWidget {
+  const _InviteCard({required this.info});
+
+  final InviteInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('초대코드', style: AppTypography.labelLarge),
+                const SizedBox(height: 6),
+                Text(
+                  info.code.isEmpty ? '생성중...' : info.code,
+                  style: AppTypography.h4,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '친구가 앱에서 초대코드를 입력하면 요청을 보낼 수 있어요.',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
+            onPressed: info.code.isEmpty ? null : () => Share.share(info.shareText),
+            icon: const Icon(Icons.share, size: 18),
+            label: const Text('공유'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddFriendCard extends StatelessWidget {
+  const _AddFriendCard({
+    required this.mode,
+    required this.nicknameController,
+    required this.inviteCodeController,
+    required this.onModeChanged,
+    required this.onSubmit,
+  });
+
+  final _AddMode mode;
+  final TextEditingController nicknameController;
+  final TextEditingController inviteCodeController;
+  final ValueChanged<_AddMode> onModeChanged;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.paddingMD),
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _ModeChip(
+                  label: '닉네임',
+                  selected: mode == _AddMode.nickname,
+                  onTap: () => onModeChanged(_AddMode.nickname),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ModeChip(
+                  label: '초대코드',
+                  selected: mode == _AddMode.inviteCode,
+                  onTap: () => onModeChanged(_AddMode.inviteCode),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (mode == _AddMode.nickname)
+            _InputRow(
+              controller: nicknameController,
+              hintText: '닉네임으로 친구 요청',
+              onSubmit: onSubmit,
+            )
+          else
+            _InputRow(
+              controller: inviteCodeController,
+              hintText: '초대코드(6자리)로 친구 요청',
+              onSubmit: onSubmit,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+      child: Container(
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary100 : AppColors.gray100,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelSmall.copyWith(
+            color: selected ? AppColors.primary900 : AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InputRow extends StatelessWidget {
+  const _InputRow({
     required this.controller,
+    required this.hintText,
     required this.onSubmit,
   });
 
   final TextEditingController controller;
+  final String hintText;
   final VoidCallback onSubmit;
 
   @override
@@ -235,7 +430,7 @@ class _SearchBar extends StatelessWidget {
               controller: controller,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: '닉네임으로 친구 추가',
+                hintText: hintText,
                 hintStyle: AppTypography.bodyMedium.copyWith(
                   color: AppColors.textHint,
                 ),
@@ -257,7 +452,7 @@ class _SearchBar extends StatelessWidget {
                   width: 36,
                   height: 36,
                   child: Icon(
-                    Icons.search,
+                    Icons.send,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -296,68 +491,15 @@ class _FriendCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _Metric(
-                label: '쿠폰으로 아낀 금액',
-                value: '${_comma(friend.rewardWon)}원',
-              ),
-              const SizedBox(height: 4),
-              _Metric(
-                label: '총 걸음 수',
-                value: '${_comma(friend.totalSteps)}보',
-              ),
-              const SizedBox(height: 4),
-              _Metric(
-                label: '일일 걸음수',
-                value: '${_comma(friend.dailySteps)}보',
-              ),
-            ],
+          const SizedBox(width: 8),
+          Text(
+            '친구',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          style: AppTypography.bodySmall.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _comma(int n) {
-  final s = n.toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    final idx = s.length - i;
-    buf.write(s[i]);
-    if (idx > 1 && idx % 3 == 1) buf.write(',');
-  }
-  return buf.toString();
 }

@@ -1,59 +1,69 @@
 class Friend {
   const Friend({
+    required this.friendUid,
     required this.nickname,
-    required this.rewardWon,
-    required this.joinedAt,
-    this.totalSteps = 13040,
-    this.dailySteps = 1340,
+    required this.createdAt,
+    this.photoUrl,
+    this.level,
+    this.profileIndex,
+    this.snapshotAt,
+    this.rewardWon,
+    this.totalSteps,
+    this.dailySteps,
   });
 
+  final String friendUid;
   final String nickname;
-  final int rewardWon;
-  final DateTime joinedAt;
-  final int totalSteps;
-  final int dailySteps;
+  final String? photoUrl;
+  final int? level;
+  final int? profileIndex;
+  final DateTime createdAt;
+  final DateTime? snapshotAt;
+
+  // Optional legacy metrics (not required for MVP friend system).
+  final int? rewardWon;
+  final int? totalSteps;
+  final int? dailySteps;
 }
 
-class FriendRequest {
-  const FriendRequest({
-    required this.id,
+class FriendRequestIn {
+  const FriendRequestIn({
+    required this.fromUid,
     required this.nickname,
-    required this.requestedAt,
+    required this.createdAt,
+    this.photoUrl,
+    this.level,
+    this.profileIndex,
   });
 
-  final String id;
+  final String fromUid;
   final String nickname;
-  final DateTime requestedAt;
+  final String? photoUrl;
+  final int? level;
+  final int? profileIndex;
+  final DateTime createdAt;
 }
 
-class FriendRequestsState {
-  const FriendRequestsState({
-    required this.sent,
-    required this.received,
+class FriendRequestOut {
+  const FriendRequestOut({
+    required this.toUid,
+    required this.nickname,
+    required this.createdAt,
+    this.photoUrl,
   });
 
-  final List<FriendRequest> sent;
-  final List<FriendRequest> received;
-
-  FriendRequestsState copyWith({
-    List<FriendRequest>? sent,
-    List<FriendRequest>? received,
-  }) {
-    return FriendRequestsState(
-      sent: sent ?? this.sent,
-      received: received ?? this.received,
-    );
-  }
+  final String toUid;
+  final String nickname;
+  final String? photoUrl;
+  final DateTime createdAt;
 }
 
 class InviteInfo {
   const InviteInfo({
     required this.code,
-    required this.link,
-    required this.rewardWon,
+    required this.shareText,
   });
 
   final String code;
-  final String link;
-  final int rewardWon;
+  final String shareText;
 }

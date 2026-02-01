@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../features/friends/friends_model.dart';
 import '../../features/friends/friends_provider.dart';
@@ -13,11 +14,24 @@ import '../../widgets/app_card.dart';
 class FriendRequestsScreen extends ConsumerWidget {
   const FriendRequestsScreen({super.key});
 
+  String _friendlyFunctionsError(Object e) {
+    if (e is FirebaseFunctionsException) {
+      switch (e.code) {
+        case 'failed-precondition':
+          return '요청이 유효하지 않습니다. 새로고침 후 다시 시도해주세요.';
+        case 'unauthenticated':
+          return '로그인이 필요합니다.';
+        default:
+          return '오류가 발생했습니다. (${e.code})';
+      }
+    }
+    return '오류가 발생했습니다.';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(friendRequestsControllerProvider);
-    final sent = state.sent;
-    final received = state.received;
+    final sent = ref.watch(outgoingFriendRequestsStreamProvider).valueOrNull ?? const [];
+    final received = ref.watch(incomingFriendRequestsStreamProvider).valueOrNull ?? const [];
 
     return DefaultTabController(
       length: 2,
@@ -39,8 +53,8 @@ class FriendRequestsScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _ReceivedList(items: received),
-            _SentList(items: sent),
+            _ReceivedList(items: received, onError: _friendlyFunctionsError),
+            _SentList(items: sent, onError: _friendlyFunctionsError),
           ],
         ),
       ),
@@ -49,9 +63,10 @@ class FriendRequestsScreen extends ConsumerWidget {
 }
 
 class _ReceivedList extends ConsumerWidget {
-  const _ReceivedList({required this.items});
+  const _ReceivedList({required this.items, required this.onError});
 
-  final List<FriendRequest> items;
+  final List<FriendRequestIn> items;
+  final String Function(Object e) onError;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,7 +77,7 @@ class _ReceivedList extends ConsumerWidget {
       );
     }
 
-    final controller = ref.read(friendRequestsControllerProvider.notifier);
+    final repo = ref.read(friendsRepositoryProvider);
 
     return ListView.separated(
       padding: AppTheme.screenPadding.copyWith(bottom: 120),
@@ -77,7 +92,7 @@ class _ReceivedList extends ConsumerWidget {
             children: [
               _RequestHeader(
                 nickname: r.nickname,
-                subtitle: '${_timeAgo(r.requestedAt)} · 받은 요청',
+                subtitle: '${_timeAgo(r.createdAt)} · 받은 요청',
               ),
               const SizedBox(height: 12),
               Row(
@@ -87,7 +102,15 @@ class _ReceivedList extends ConsumerWidget {
                       text: '거절',
                       size: ButtonSize.small,
                       variant: ButtonVariant.outline,
-                      onPressed: () => controller.declineReceived(r.id),
+                      onPressed: () async {
+                        try {
+                          await repo.declineRequest(fromUid: r.fromUid);
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(onError(e))),
+                          );
+                        }
+                      },
                       isFullWidth: true,
                     ),
                   ),
@@ -97,7 +120,15 @@ class _ReceivedList extends ConsumerWidget {
                       text: '수락',
                       size: ButtonSize.small,
                       variant: ButtonVariant.primary,
-                      onPressed: () => controller.acceptReceived(r.id),
+                      onPressed: () async {
+                        try {
+                          await repo.acceptRequest(fromUid: r.fromUid);
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(onError(e))),
+                          );
+                        }
+                      },
                       isFullWidth: true,
                     ),
                   ),
@@ -112,9 +143,10 @@ class _ReceivedList extends ConsumerWidget {
 }
 
 class _SentList extends ConsumerWidget {
-  const _SentList({required this.items});
+  const _SentList({required this.items, required this.onError});
 
-  final List<FriendRequest> items;
+  final List<FriendRequestOut> items;
+  final String Function(Object e) onError;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -125,7 +157,7 @@ class _SentList extends ConsumerWidget {
       );
     }
 
-    final controller = ref.read(friendRequestsControllerProvider.notifier);
+    final repo = ref.read(friendsRepositoryProvider);
 
     return ListView.separated(
       padding: AppTheme.screenPadding.copyWith(bottom: 120),
@@ -140,7 +172,7 @@ class _SentList extends ConsumerWidget {
             children: [
               _RequestHeader(
                 nickname: r.nickname,
-                subtitle: '${_timeAgo(r.requestedAt)} · 보낸 요청',
+                subtitle: '${_timeAgo(r.createdAt)} · 보낸 요청',
                 trailing: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -162,7 +194,15 @@ class _SentList extends ConsumerWidget {
                 text: '요청 취소',
                 size: ButtonSize.small,
                 variant: ButtonVariant.outline,
-                onPressed: () => controller.cancelSent(r.id),
+                onPressed: () async {
+                  try {
+                    await repo.cancelRequest(toUid: r.toUid);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(onError(e))),
+                    );
+                  }
+                },
                 isFullWidth: true,
               ),
             ],

@@ -2,33 +2,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hangookji_namgu/features/friends/friends_provider.dart';
+import 'package:hangookji_namgu/features/friends/friends_model.dart';
+import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 
 void main() {
-  test('addFriendByInviteCode requires min length and prepends friend', () {
-    final container = ProviderContainer();
+  test('inviteInfoProvider uses friendInviteCode from user doc', () async {
+    final container = ProviderContainer(
+      overrides: [
+        currentUserDocProvider.overrideWith((ref) {
+          return Stream.value(<String, dynamic>{'friendInviteCode': 'ABC123'});
+        }),
+      ],
+    );
     addTearDown(container.dispose);
 
-    final before = container.read(friendsControllerProvider);
-    final ok1 = container
-        .read(friendsControllerProvider.notifier)
-        .addFriendByInviteCode('12');
-    expect(ok1, isFalse);
-    expect(container.read(friendsControllerProvider).length, before.length);
-
-    final ok2 = container
-        .read(friendsControllerProvider.notifier)
-        .addFriendByInviteCode('ABCD');
-    expect(ok2, isTrue);
-    final after = container.read(friendsControllerProvider);
-    expect(after.length, before.length + 1);
+    await container.read(currentUserDocProvider.future);
+    final info = container.read(inviteInfoProvider);
+    expect(info.code, 'ABC123');
+    expect(info.shareText, contains('ABC123'));
   });
 
-  test('totalFriendRewardProvider sums rewards', () {
-    final container = ProviderContainer();
+  test('incomingFriendRequestsCountProvider reflects incoming stream length', () async {
+    final container = ProviderContainer(
+      overrides: [
+        incomingFriendRequestsStreamProvider.overrideWith((ref) {
+          return Stream.value(
+            [
+              FriendRequestIn(fromUid: 'u1', nickname: 'A', createdAt: DateTime(2026, 1, 1)),
+              FriendRequestIn(fromUid: 'u2', nickname: 'B', createdAt: DateTime(2026, 1, 1)),
+            ],
+          );
+        }),
+      ],
+    );
     addTearDown(container.dispose);
 
-    final total = container.read(totalFriendRewardProvider);
-    expect(total, greaterThan(0));
+    // Flush provider.
+    await container.read(incomingFriendRequestsStreamProvider.future);
+    expect(container.read(incomingFriendRequestsCountProvider), 2);
   });
 }
-

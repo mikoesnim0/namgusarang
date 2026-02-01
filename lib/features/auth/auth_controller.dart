@@ -32,9 +32,21 @@ class AuthActionException implements Exception {
 }
 
 class AuthController extends AsyncNotifier<void> {
+  static const _functionsRegion = 'asia-northeast3';
+
   @override
   Future<void> build() async {
     // no-op: controller only runs when actions are invoked
+  }
+
+  Future<void> _ensurePublicProfileIndex() async {
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: _functionsRegion);
+      final callable = functions.httpsCallable('ensurePublicProfile');
+      await callable.call();
+    } catch (_) {
+      // Best-effort: don't block auth flows.
+    }
   }
 
   Future<void> _run(String actionName, Future<void> Function() action) async {
@@ -81,6 +93,7 @@ class AuthController extends AsyncNotifier<void> {
       });
 
       await users.upsertOnAuth(user: user, email: email);
+      await _ensurePublicProfileIndex();
     });
   }
 
@@ -121,6 +134,7 @@ class AuthController extends AsyncNotifier<void> {
         birthdate: birthdate,
         gender: gender,
       );
+      await _ensurePublicProfileIndex();
     });
   }
 
@@ -148,6 +162,7 @@ class AuthController extends AsyncNotifier<void> {
         nickname: result.kakaoNickname,
         photoUrl: result.kakaoPhotoURL,
       );
+      await _ensurePublicProfileIndex();
     });
   }
 
@@ -174,6 +189,7 @@ class AuthController extends AsyncNotifier<void> {
         nickname: user.displayName,
         photoUrl: user.photoURL,
       );
+      await _ensurePublicProfileIndex();
     });
   }
 
@@ -208,6 +224,7 @@ class AuthController extends AsyncNotifier<void> {
         nickname: candidateNickname,
         photoUrl: user.photoURL,
       );
+      await _ensurePublicProfileIndex();
     });
   }
 
