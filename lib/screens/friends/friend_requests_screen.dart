@@ -30,8 +30,10 @@ class FriendRequestsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sent = ref.watch(outgoingFriendRequestsStreamProvider).valueOrNull ?? const [];
-    final received = ref.watch(incomingFriendRequestsStreamProvider).valueOrNull ?? const [];
+    final sent =
+        ref.watch(outgoingFriendRequestsStreamProvider).valueOrNull ?? const [];
+    final received =
+        ref.watch(incomingFriendRequestsStreamProvider).valueOrNull ?? const [];
 
     return DefaultTabController(
       length: 2,
@@ -106,9 +108,9 @@ class _ReceivedList extends ConsumerWidget {
                         try {
                           await repo.declineRequest(fromUid: r.fromUid);
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(onError(e))),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(onError(e))));
                         }
                       },
                       isFullWidth: true,
@@ -124,9 +126,9 @@ class _ReceivedList extends ConsumerWidget {
                         try {
                           await repo.acceptRequest(fromUid: r.fromUid);
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(onError(e))),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(onError(e))));
                         }
                       },
                       isFullWidth: true,
@@ -174,8 +176,10 @@ class _SentList extends ConsumerWidget {
                 nickname: r.nickname,
                 subtitle: '${_timeAgo(r.createdAt)} · 보낸 요청',
                 trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gray100,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -198,9 +202,9 @@ class _SentList extends ConsumerWidget {
                   try {
                     await repo.cancelRequest(toUid: r.toUid);
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(onError(e))),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(onError(e))));
                   }
                 },
                 isFullWidth: true,

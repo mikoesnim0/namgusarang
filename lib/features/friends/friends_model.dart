@@ -59,10 +59,7 @@ class FriendRequestOut {
 }
 
 class InviteInfo {
-  const InviteInfo({
-    required this.code,
-    required this.shareText,
-  });
+  const InviteInfo({required this.code, required this.shareText});
 
   final String code;
   final String shareText;
