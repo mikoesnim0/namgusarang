@@ -5,6 +5,16 @@ import '../auth/auth_providers.dart';
 import 'friends_model.dart';
 import 'friends_repository.dart';
 
+final friendUserSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final publicUserSearchProvider = FutureProvider<List<PublicUser>>((ref) async {
+  final q = ref.watch(friendUserSearchQueryProvider).trim();
+  if (q.isEmpty) return const [];
+  return ref
+      .read(friendsRepositoryProvider)
+      .searchPublicUsersByPrefix(prefix: q);
+});
+
 final friendsRepositoryProvider = Provider<FriendsRepository>((ref) {
   return FriendsRepository(
     firestore: FirebaseFirestore.instance,
@@ -18,17 +28,23 @@ final friendsStreamProvider = StreamProvider<List<Friend>>((ref) {
   return ref.read(friendsRepositoryProvider).watchFriends(uid: uid);
 });
 
-final incomingFriendRequestsStreamProvider = StreamProvider<List<FriendRequestIn>>((ref) {
-  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
-  if (uid == null) return const Stream.empty();
-  return ref.read(friendsRepositoryProvider).watchIncomingRequests(uid: uid);
-});
+final incomingFriendRequestsStreamProvider =
+    StreamProvider<List<FriendRequestIn>>((ref) {
+      final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+      if (uid == null) return const Stream.empty();
+      return ref
+          .read(friendsRepositoryProvider)
+          .watchIncomingRequests(uid: uid);
+    });
 
-final outgoingFriendRequestsStreamProvider = StreamProvider<List<FriendRequestOut>>((ref) {
-  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
-  if (uid == null) return const Stream.empty();
-  return ref.read(friendsRepositoryProvider).watchOutgoingRequests(uid: uid);
-});
+final outgoingFriendRequestsStreamProvider =
+    StreamProvider<List<FriendRequestOut>>((ref) {
+      final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+      if (uid == null) return const Stream.empty();
+      return ref
+          .read(friendsRepositoryProvider)
+          .watchOutgoingRequests(uid: uid);
+    });
 
 final incomingFriendRequestsCountProvider = Provider<int>((ref) {
   final list = ref.watch(incomingFriendRequestsStreamProvider).valueOrNull;
@@ -45,4 +61,3 @@ final inviteInfoProvider = Provider<InviteInfo>((ref) {
 
   return InviteInfo(code: code, shareText: shareText);
 });
-

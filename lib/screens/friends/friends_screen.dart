@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/auth_providers.dart';
 import '../../features/friends/friends_model.dart';
 import '../../features/friends/friends_provider.dart';
+import '../../features/friends/friends_repository.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -62,6 +63,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         final nickname = _controller.text.trim();
         await repo.sendRequestByNickname(nickname);
         _controller.clear();
+        ref.read(friendUserSearchQueryProvider.notifier).state = '';
       } else {
         final code = _inviteCodeController.text.trim();
         await repo.sendRequestByInviteCode(code);
@@ -70,14 +72,14 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('친구 요청을 보냈습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('친구 요청을 보냈습니다.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_friendlyFunctionsError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_friendlyFunctionsError(e))));
     }
   }
 
@@ -86,6 +88,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final friendsAsync = ref.watch(friendsStreamProvider);
     final incomingCount = ref.watch(incomingFriendRequestsCountProvider);
     final inviteInfo = ref.watch(inviteInfoProvider);
+    final authUid = ref.watch(authStateProvider).valueOrNull?.uid;
+    final searchAsync = ref.watch(publicUserSearchProvider);
 
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -96,10 +100,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final nickname = (docNickname?.isNotEmpty == true)
         ? docNickname!
         : (authNickname?.isNotEmpty == true)
-            ? authNickname!
-            : (settingsNickname?.trim().isNotEmpty == true)
-                ? settingsNickname!.trim()
-                : '닉네임';
+        ? authNickname!
+        : (settingsNickname?.trim().isNotEmpty == true)
+        ? settingsNickname!.trim()
+        : '닉네임';
 
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -122,8 +126,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       const CircleAvatar(
                         radius: 16,
                         backgroundColor: AppColors.gray200,
-                        child:
-                            Icon(Icons.person, color: AppColors.textSecondary),
+                        child: Icon(
+                          Icons.person,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       ConstrainedBox(
@@ -139,10 +145,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   ),
                 ),
               ),
-              const Align(
-                alignment: Alignment.center,
-                child: Text('친구목록'),
-              ),
+              const Align(alignment: Alignment.center, child: Text('친구목록')),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -173,10 +176,12 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
           final visibleFriends = _friendQuery.trim().isEmpty
               ? friends
               : friends
-                  .where((f) => f.nickname
-                      .toLowerCase()
-                      .contains(_friendQuery.toLowerCase()))
-                  .toList();
+                    .where(
+                      (f) => f.nickname.toLowerCase().contains(
+                        _friendQuery.toLowerCase(),
+                      ),
+                    )
+                    .toList();
 
           return ListView.separated(
             padding: AppTheme.screenPadding.copyWith(bottom: 120),
@@ -195,20 +200,26 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                       inviteCodeController: _inviteCodeController,
                       onModeChanged: (m) => setState(() => _addMode = m),
                       onSubmit: _submitAdd,
+                      searchAsync: searchAsync,
+                      currentUid: authUid,
                     ),
                     const SizedBox(height: 10),
                     Container(
                       height: 44,
                       decoration: BoxDecoration(
                         color: AppColors.gray100,
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMD,
+                        ),
                         border: Border.all(color: AppColors.border),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.search,
-                              color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.search,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
@@ -297,7 +308,9 @@ class _InviteCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           ElevatedButton.icon(
-            onPressed: info.code.isEmpty ? null : () => Share.share(info.shareText),
+            onPressed: info.code.isEmpty
+                ? null
+                : () => Share.share(info.shareText),
             icon: const Icon(Icons.share, size: 18),
             label: const Text('공유'),
           ),
@@ -314,6 +327,8 @@ class _AddFriendCard extends StatelessWidget {
     required this.inviteCodeController,
     required this.onModeChanged,
     required this.onSubmit,
+    required this.searchAsync,
+    required this.currentUid,
   });
 
   final _AddMode mode;
@@ -321,9 +336,17 @@ class _AddFriendCard extends StatelessWidget {
   final TextEditingController inviteCodeController;
   final ValueChanged<_AddMode> onModeChanged;
   final VoidCallback onSubmit;
+  final AsyncValue<List<PublicUser>> searchAsync;
+  final String? currentUid;
 
   @override
   Widget build(BuildContext context) {
+    // NOTE: This widget needs Provider access for the search query provider.
+    // It is wrapped as a Consumer below.
+    return Consumer(builder: (context, ref, _) => _build(context, ref));
+  }
+
+  Widget _build(BuildContext context, WidgetRef ref) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
       margin: EdgeInsets.zero,
@@ -355,12 +378,20 @@ class _AddFriendCard extends StatelessWidget {
               controller: nicknameController,
               hintText: '닉네임으로 친구 요청',
               onSubmit: onSubmit,
+              onChanged: (v) {
+                ref.read(friendUserSearchQueryProvider.notifier).state = v;
+              },
             )
           else
             _InputRow(
               controller: inviteCodeController,
               hintText: '초대코드(6자리)로 친구 요청',
               onSubmit: onSubmit,
+            ),
+          if (mode == _AddMode.nickname)
+            _SearchSuggestions(
+              searchAsync: searchAsync,
+              currentUid: currentUid,
             ),
         ],
       ),
@@ -409,11 +440,13 @@ class _InputRow extends StatelessWidget {
     required this.controller,
     required this.hintText,
     required this.onSubmit,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String hintText;
   final VoidCallback onSubmit;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -438,6 +471,7 @@ class _InputRow extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
               onSubmitted: (_) => onSubmit(),
+              onChanged: onChanged,
             ),
           ),
           Padding(
@@ -451,16 +485,118 @@ class _InputRow extends StatelessWidget {
                 child: const SizedBox(
                   width: 36,
                   height: 36,
-                  child: Icon(
-                    Icons.send,
-                    color: AppColors.textSecondary,
-                  ),
+                  child: Icon(Icons.send, color: AppColors.textSecondary),
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SearchSuggestions extends ConsumerWidget {
+  const _SearchSuggestions({
+    required this.searchAsync,
+    required this.currentUid,
+  });
+
+  final AsyncValue<List<PublicUser>> searchAsync;
+  final String? currentUid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return searchAsync.when(
+      loading: () => const SizedBox(height: 0),
+      error: (_, __) => const SizedBox(height: 0),
+      data: (items) {
+        final q = ref.watch(friendUserSearchQueryProvider).trim();
+        if (q.isEmpty) return const SizedBox(height: 0);
+        final filtered = items.where((u) => u.uid != currentUid).toList();
+        if (filtered.isEmpty) return const SizedBox(height: 0);
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                '검색 결과',
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...filtered
+                  .take(6)
+                  .map(
+                    (u) => AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.paddingMD,
+                        vertical: AppSpacing.paddingSM,
+                      ),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      onTap: () async {
+                        final repo = ref.read(friendsRepositoryProvider);
+                        try {
+                          await repo.ensurePublicProfile();
+                          await repo.sendRequestByUid(u.uid);
+                          ref
+                                  .read(friendUserSearchQueryProvider.notifier)
+                                  .state =
+                              '';
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${u.nickname}님에게 요청을 보냈습니다.'),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('요청 실패: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 14,
+                            backgroundColor: AppColors.gray200,
+                            child: Icon(
+                              Icons.person,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              u.nickname,
+                              style: AppTypography.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '요청',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.primary700,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

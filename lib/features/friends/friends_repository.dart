@@ -7,8 +7,8 @@ class FriendsRepository {
   FriendsRepository({
     required FirebaseFirestore firestore,
     required FirebaseFunctions functions,
-  })  : _db = firestore,
-        _functions = functions;
+  }) : _db = firestore,
+       _functions = functions;
 
   final FirebaseFirestore _db;
   final FirebaseFunctions _functions;
@@ -58,6 +58,11 @@ class FriendsRepository {
     await callable.call({'nickname': nickname});
   }
 
+  Future<void> sendRequestByUid(String toUid) async {
+    final callable = _functions.httpsCallable('sendFriendRequestByUid');
+    await callable.call({'toUid': toUid});
+  }
+
   Future<void> sendRequestByInviteCode(String code) async {
     final callable = _functions.httpsCallable('sendFriendRequestByInviteCode');
     await callable.call({'code': code});
@@ -87,6 +92,57 @@ class FriendsRepository {
     final callable = _functions.httpsCallable('changeNickname');
     await callable.call({'nickname': newNickname});
   }
+
+  Future<List<PublicUser>> searchPublicUsersByPrefix({
+    required String prefix,
+    int limit = 8,
+  }) async {
+    final p = prefix.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
+    if (p.isEmpty) return const [];
+
+    // Prefix query: nicknameLower >= p AND < p + \uf8ff
+    final start = p;
+    final end = '$p\uf8ff';
+    final snap = await _db
+        .collection('public_users')
+        .where('nicknameLower', isGreaterThanOrEqualTo: start)
+        .where('nicknameLower', isLessThanOrEqualTo: end)
+        .orderBy('nicknameLower')
+        .limit(limit)
+        .get();
+
+    return snap.docs.map((d) {
+      final data = d.data();
+      return PublicUser(
+        uid: (data['uid'] as String?)?.trim() ?? d.id,
+        nickname: (data['nickname'] as String?)?.trim() ?? '',
+        nicknameLower: (data['nicknameLower'] as String?)?.trim() ?? '',
+        photoUrl: (data['photoUrl'] as String?)?.trim(),
+        level: data['level'] is int ? data['level'] as int : null,
+        profileIndex: data['profileIndex'] is int
+            ? data['profileIndex'] as int
+            : null,
+      );
+    }).toList();
+  }
+}
+
+class PublicUser {
+  const PublicUser({
+    required this.uid,
+    required this.nickname,
+    required this.nicknameLower,
+    this.photoUrl,
+    this.level,
+    this.profileIndex,
+  });
+
+  final String uid;
+  final String nickname;
+  final String nicknameLower;
+  final String? photoUrl;
+  final int? level;
+  final int? profileIndex;
 }
 
 Friend _friendFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
@@ -102,17 +158,22 @@ Friend _friendFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
     nickname: (data['friendNickname'] as String?)?.trim() ?? '',
     photoUrl: (data['friendPhotoUrl'] as String?)?.trim(),
     level: data['friendLevel'] is int ? data['friendLevel'] as int : null,
-    profileIndex:
-        data['friendProfileIndex'] is int ? data['friendProfileIndex'] as int : null,
+    profileIndex: data['friendProfileIndex'] is int
+        ? data['friendProfileIndex'] as int
+        : null,
     createdAt: tsToDate(data['createdAt']),
-    snapshotAt: data['snapshotAt'] == null ? null : tsToDate(data['snapshotAt']),
+    snapshotAt: data['snapshotAt'] == null
+        ? null
+        : tsToDate(data['snapshotAt']),
     rewardWon: data['rewardWon'] is int ? data['rewardWon'] as int : null,
     totalSteps: data['totalSteps'] is int ? data['totalSteps'] as int : null,
     dailySteps: data['dailySteps'] is int ? data['dailySteps'] as int : null,
   );
 }
 
-FriendRequestIn _requestInFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+FriendRequestIn _requestInFromDoc(
+  QueryDocumentSnapshot<Map<String, dynamic>> d,
+) {
   final data = d.data();
   DateTime tsToDate(dynamic v) {
     if (v is Timestamp) return v.toDate();
@@ -125,13 +186,16 @@ FriendRequestIn _requestInFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d)
     nickname: (data['fromNickname'] as String?)?.trim() ?? '',
     photoUrl: (data['fromPhotoUrl'] as String?)?.trim(),
     level: data['fromLevel'] is int ? data['fromLevel'] as int : null,
-    profileIndex:
-        data['fromProfileIndex'] is int ? data['fromProfileIndex'] as int : null,
+    profileIndex: data['fromProfileIndex'] is int
+        ? data['fromProfileIndex'] as int
+        : null,
     createdAt: tsToDate(data['createdAt']),
   );
 }
 
-FriendRequestOut _requestOutFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+FriendRequestOut _requestOutFromDoc(
+  QueryDocumentSnapshot<Map<String, dynamic>> d,
+) {
   final data = d.data();
   DateTime tsToDate(dynamic v) {
     if (v is Timestamp) return v.toDate();
@@ -146,4 +210,3 @@ FriendRequestOut _requestOutFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> 
     createdAt: tsToDate(data['createdAt']),
   );
 }
-
