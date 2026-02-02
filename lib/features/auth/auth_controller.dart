@@ -113,10 +113,6 @@ class AuthController extends AsyncNotifier<void> {
       if (trimmedNickname.isEmpty) {
         throw const AuthUnavailableException('닉네임을 입력해주세요.');
       }
-      final available = await users.isNicknameAvailable(trimmedNickname);
-      if (!available) {
-        throw const AuthUnavailableException('이미 사용 중인 닉네임입니다. 다른 닉네임을 선택해주세요.');
-      }
 
       final cred = await auth.signUpWithEmail(email: email, password: password);
       final user = cred.user;
@@ -275,8 +271,7 @@ String debugAuthErrorDetails(Object error, StackTrace? stackTrace) {
 
 String friendlyAuthError(Object error) {
   if (error is AuthActionException) {
-    // Prefix with action label so we know where it came from.
-    return '[${error.action}] ${friendlyAuthError(error.cause)}';
+    return friendlyAuthError(error.cause);
   }
   if (error is UnsupportedError) {
     return error.message ?? error.toString();
@@ -285,60 +280,30 @@ String friendlyAuthError(Object error) {
     return error.message;
   }
   if (error is FirebaseAuthException) {
-    final msg = (error.message ?? '').trim();
-
     if (error.code == 'invalid-credential') {
-      return '이메일/비밀번호가 올바르지 않습니다. (raw: ${error.code}${msg.isNotEmpty ? ', $msg' : ''})';
+      return '이메일/비밀번호가 올바르지 않습니다.';
     }
     if (error.code == 'network-request-failed') {
       return '네트워크 오류가 발생했습니다. 인터넷 연결을 확인한 뒤 다시 시도해주세요.';
     }
     if (error.code == 'keychain-error') {
-      return 'macOS Keychain 접근 오류로 인증 정보를 저장하지 못했습니다. '
-          '`macos/Runner/DebugProfile.entitlements`/`Release.entitlements`에 keychain-access-groups 설정 후 '
-          '`flutter clean` 후 재실행해보세요. (raw: ${error.code}${msg.isNotEmpty ? ', $msg' : ''})';
+      return '로그인 저장소(Keychain) 오류가 발생했습니다. 앱을 재실행한 뒤 다시 시도해주세요.';
     }
 
     // 플랫폼 앱 등록/설정이 안 맞을 때 자주 보이는 케이스
+    final msg = (error.message ?? '').trim();
     if (msg.contains('CONFIGURATION_NOT_FOUND')) {
-      final raw = ' (raw: ${error.code}${msg.isNotEmpty ? ', $msg' : ''})';
-      switch (defaultTargetPlatform) {
-        case TargetPlatform.android:
-          return 'Firebase 설정을 찾지 못했습니다. '
-              'Android 앱(packageName)이 Firebase에 등록되어 있고 '
-              '`android/app/google-services.json`가 현재 applicationId와 일치하는지 확인해주세요. '
-              '가장 빠른 해결: `flutterfire configure --platforms=android` 실행 후 재빌드.'
-              '$raw';
-        case TargetPlatform.iOS:
-          return 'Firebase 설정을 찾지 못했습니다. '
-              '`flutterfire configure --platforms=ios` 실행 후 '
-              '`ios/Runner/GoogleService-Info.plist`가 최신인지 확인해주세요.'
-              '$raw';
-        case TargetPlatform.macOS:
-          return 'Firebase 설정을 찾지 못했습니다. '
-              'macOS는 iOS와 별도 앱 등록이 필요한 경우가 많습니다. '
-              '`macos-bundle-id=${"com.doyakmin.hangookji.namgu.macos"}`로 새 앱을 만들도록 '
-              '`flutterfire configure --platforms=macos --macos-bundle-id=com.doyakmin.hangookji.namgu.macos` 실행 후 '
-              '`macos/Runner/GoogleService-Info.plist`가 최신인지 확인해주세요.'
-              '$raw';
-        default:
-          return 'Firebase 설정을 찾지 못했습니다. `flutterfire configure`로 설정을 동기화한 뒤 다시 시도해주세요.$raw';
-      }
+      return '로그인 설정을 확인할 수 없습니다. 앱을 업데이트하거나 관리자에게 문의해주세요.';
     }
 
-    // 일반적인 auth 에러는 "code + message"로 바로 진단 가능하게.
-    if (msg.isNotEmpty) return '(${error.code}) $msg';
-    return '(${error.code})';
+    // Keep it 1 sentence for end users.
+    return '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.';
   }
   if (error is FirebaseException) {
-    final msg = (error.message ?? '').trim();
-    if (msg.isNotEmpty) return '(${error.code}) $msg';
-    return '(${error.code})';
-  }
-  if (kDebugMode) {
-    // 너무 긴 네이티브 덤프가 UI로 노출되는 걸 방지
-    final s = error.toString();
-    return s.length > 200 ? s.substring(0, 200) : s;
+    if (error.code == 'permission-denied') {
+      return '권한이 없어 요청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.';
+    }
+    return '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
   }
   return '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.';
 }

@@ -262,7 +262,18 @@ class SettingsScreen extends ConsumerWidget {
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('로그아웃'),
+                        titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+                        title: Row(
+                          children: [
+                            const Expanded(child: Text('로그아웃')),
+                            IconButton(
+                              tooltip: '닫기',
+                              onPressed: () =>
+                                  Navigator.of(context).pop(false),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
                         content: const Text('정말 로그아웃 하시겠어요?'),
                         actions: [
                           TextButton(

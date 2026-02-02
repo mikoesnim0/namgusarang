@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -76,49 +75,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         },
         error: (e, st) {
           if (!mounted) return;
-          final rootContext = Navigator.of(
-            context,
-            rootNavigator: true,
-          ).context;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(friendlyAuthError(e)),
-              action: kDebugMode
-                  ? SnackBarAction(
-                      label: 'DETAILS',
-                      onPressed: () async {
-                        if (!rootContext.mounted) return;
-                        final details = debugAuthErrorDetails(e, st);
-                        await showDialog<void>(
-                          context: rootContext,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Auth error details'),
-                            content: SingleChildScrollView(
-                              child: SelectableText(details),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: details),
-                                  );
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Copy & Close'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('Close'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    )
-                  : null,
-            ),
-          );
+          final msg = friendlyAuthError(e);
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(msg)));
         },
       );
     });

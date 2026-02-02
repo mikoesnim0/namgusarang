@@ -330,8 +330,8 @@ class HomeScreen extends ConsumerWidget {
     final action = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('쿠폰 발급 완료'),
-        content: Text('미션을 완료해서 쿠폰이 발급되었습니다.\n\n[$title]\n${place.name}'),
+        title: const Text('축하합니다!'),
+        content: Text('쿠폰이 발급되었습니다.\n\n[$title]\n${place.name}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(0),
