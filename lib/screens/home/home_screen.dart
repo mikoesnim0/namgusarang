@@ -188,13 +188,14 @@ class HomeScreen extends ConsumerWidget {
                     todayIndex: todayIndex,
                     daysLeft: home.cycle.daysLeft,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 18),
                   _TodayStepsCard(
                     steps: home.todaySteps,
                     goalSteps: home.mission.goalSteps,
                     remainingSteps: home.remainingSteps,
                     progress: home.progress,
                   ),
+                  const SizedBox(height: 14),
                   _CouponPlacesMapCard(
                     placesAsync: ref.watch(activePlacesProvider),
                     onOpenFullMap: () => context.go('/map'),
@@ -558,15 +559,6 @@ class _SuccessDaysCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text('일 남았어요!', style: AppTypography.bodySmall),
               ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              '10일 중 3일만 목표에 달성 하면 돼요!',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
-              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -961,7 +953,7 @@ class _CouponPlacesMapCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 200,
+            height: 160,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
               child: placesAsync.when(
@@ -1340,9 +1332,7 @@ String _comma(int value) {
   return buffer.toString();
 }
 
-String _percent(double value) => (value * 100).toStringAsFixed(1);
-
-class _StepsPermissionCard extends StatelessWidget {
+String _percent(double value) => (value * 100).toStringAsFixed(1);class _StepsPermissionCard extends StatelessWidget {
   const _StepsPermissionCard({required this.onGrant});
   final VoidCallback onGrant;
   @override
