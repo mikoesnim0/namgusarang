@@ -621,6 +621,8 @@ class _SuccessDayCircle extends StatelessWidget {
         ? AppColors.gray200
         : isFailed
         ? Colors.red.shade200
+        : isToday
+        ? AppColors.primary500
         : AppColors.border;
 
     final bgColor = isToday
