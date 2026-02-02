@@ -10,6 +10,7 @@ import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 
 class FriendRequestsScreen extends ConsumerWidget {
   const FriendRequestsScreen({super.key});
@@ -108,9 +109,7 @@ class _ReceivedList extends ConsumerWidget {
                         try {
                           await repo.declineRequest(fromUid: r.fromUid);
                         } catch (e) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(onError(e))));
+                          context.showAppSnackBar(onError(e));
                         }
                       },
                       isFullWidth: true,
@@ -126,9 +125,7 @@ class _ReceivedList extends ConsumerWidget {
                         try {
                           await repo.acceptRequest(fromUid: r.fromUid);
                         } catch (e) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(onError(e))));
+                          context.showAppSnackBar(onError(e));
                         }
                       },
                       isFullWidth: true,
@@ -202,9 +199,7 @@ class _SentList extends ConsumerWidget {
                   try {
                     await repo.cancelRequest(toUid: r.toUid);
                   } catch (e) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(onError(e))));
+                    context.showAppSnackBar(onError(e));
                   }
                 },
                 isFullWidth: true,

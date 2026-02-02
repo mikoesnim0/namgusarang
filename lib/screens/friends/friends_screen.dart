@@ -14,6 +14,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 
 class FriendsScreen extends ConsumerStatefulWidget {
   const FriendsScreen({super.key});
@@ -65,14 +66,10 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('친구 요청을 보냈습니다.')));
+      context.showAppSnackBar('친구 요청을 보냈습니다.');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_friendlyFunctionsError(e))));
+      context.showAppSnackBar(_friendlyFunctionsError(e));
     }
   }
 

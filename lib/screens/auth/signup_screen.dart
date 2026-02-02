@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:async';
 
 import '../../features/auth/auth_controller.dart';
 import '../../theme/app_colors.dart';
@@ -68,16 +69,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     }
 
     if (!_termsAgreed || !_privacyAgreed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('약관에 동의해주세요')),
-      );
+      context.showAppSnackBar('약관에 동의해주세요');
       return;
     }
 
     if (_selectedGender.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('성별을 선택해주세요')),
-      );
+      context.showAppSnackBar('성별을 선택해주세요');
       return;
     }
 
@@ -217,54 +214,46 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       next.whenOrNull(
         data: (_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('회원가입이 완료되었습니다! 인증 메일을 확인해주세요.'),
-            ),
-          );
+          context.showAppSnackBar('회원가입이 완료되었습니다! 인증 메일을 확인해주세요.');
           _clearForm();
           context.go('/home');
         },
         error: (e, st) {
           if (!mounted) return;
           final rootContext = Navigator.of(context, rootNavigator: true).context;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(friendlyAuthError(e)),
-            action: kDebugMode
-                ? SnackBarAction(
-                    label: 'DETAILS',
+          context.showAppSnackBar(friendlyAuthError(e));
+          if (!kDebugMode) return;
+
+          // Debug-only: show full details dialog (but keep snackbar clean for release).
+          unawaited(() async {
+            if (!rootContext.mounted) return;
+            final details = debugAuthErrorDetails(e, st);
+            await showDialog<void>(
+              context: rootContext,
+              builder: (context) => AlertDialog(
+                title: const Text('Auth error details'),
+                content: SingleChildScrollView(
+                  child: SelectableText(details),
+                ),
+                actions: [
+                  TextButton(
                     onPressed: () async {
-                      if (!rootContext.mounted) return;
-                      final details = debugAuthErrorDetails(e, st);
-                      await showDialog<void>(
-                        context: rootContext,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Auth error details'),
-                          content: SingleChildScrollView(
-                            child: SelectableText(details),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () async {
-                                await Clipboard.setData(
-                                  ClipboardData(text: details),
-                                );
-                                if (!context.mounted) return;
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Copy & Close'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('Close'),
-                            ),
-                          ],
-                        ),
+                      await Clipboard.setData(
+                        ClipboardData(text: details),
                       );
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
                     },
-                  )
-                : null,
-          ));
+                    child: const Text('Copy & Close'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
+            );
+          }());
         },
       );
     });

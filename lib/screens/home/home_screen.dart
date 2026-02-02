@@ -24,6 +24,7 @@ import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../widgets/place_info_popup.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -110,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
                 AppSpacing.screenPaddingHorizontal,
                 12,
                 AppSpacing.screenPaddingHorizontal,
-                120,
+                72,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,9 +156,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const Spacer(),
                       InkWell(
-                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('구독관리는 추후 연결됩니다.')),
-                        ),
+                        onTap: () => context.showAppSnackBar('구독관리는 추후 연결됩니다.'),
                         child: Text(
                           '구독관리',
                           style: AppTypography.bodySmall.copyWith(
@@ -188,14 +187,14 @@ class HomeScreen extends ConsumerWidget {
                     todayIndex: todayIndex,
                     daysLeft: home.cycle.daysLeft,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 22),
                   _TodayStepsCard(
                     steps: home.todaySteps,
                     goalSteps: home.mission.goalSteps,
                     remainingSteps: home.remainingSteps,
                     progress: home.progress,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
                   _CouponPlacesMapCard(
                     placesAsync: ref.watch(activePlacesProvider),
                     onOpenFullMap: () => context.go('/map'),
@@ -545,8 +544,6 @@ class _SuccessDaysCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('성공한 날', style: AppTypography.labelLarge),
-          const SizedBox(height: 8),
           Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -620,9 +617,7 @@ class _SuccessDayCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isToday
-        ? Colors.red.shade400
-        : isFuture
+    final borderColor = isFuture
         ? AppColors.gray200
         : isFailed
         ? Colors.red.shade200
@@ -651,7 +646,7 @@ class _SuccessDayCircle extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: bgColor,
-        border: Border.all(color: borderColor, width: isToday ? 2 : 1),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: Text(
         isFailed ? '✕' : text,

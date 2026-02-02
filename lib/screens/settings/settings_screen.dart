@@ -11,6 +11,7 @@ import '../../theme/app_typography.dart';
 import '../../widgets/app_card.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_snackbar.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -28,9 +29,7 @@ class SettingsScreen extends ConsumerWidget {
     if (uri == null) return;
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('링크를 열 수 없습니다.')));
+      context.showAppSnackBar('링크를 열 수 없습니다.');
     }
   }
 
@@ -40,21 +39,17 @@ class SettingsScreen extends ConsumerWidget {
       path: _supportEmail,
       queryParameters: {
         'subject': '[Walker홀릭] 문의',
-        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+1)',
+        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+2)',
       },
     );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('메일 앱을 열 수 없습니다')));
+        context.showAppSnackBar('메일 앱을 열 수 없습니다');
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('메일 앱 열기 실패')));
+        context.showAppSnackBar('메일 앱 열기 실패');
       }
     }
   }
@@ -83,7 +78,7 @@ class SettingsScreen extends ConsumerWidget {
     final authUserAsync = ref.watch(authStateProvider);
     final userDocAsync = ref.watch(currentUserDocProvider);
 
-    const appVersion = 'v1.0.0+1';
+    const appVersion = 'v1.0.0+2';
 
     final header = settingsAsync.when(
       loading: () => const ListTile(

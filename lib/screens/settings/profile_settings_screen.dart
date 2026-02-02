@@ -12,6 +12,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/app_input.dart';
+import '../../widgets/app_snackbar.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -77,17 +78,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('프로필 저장 실패: $e')),
-        );
+        context.showAppSnackBar('프로필 저장 실패: $e');
       }
       return;
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('저장되었습니다')),
-      );
+      context.showAppSnackBar('저장되었습니다');
     }
   }
 
@@ -152,11 +149,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                             borderRadius:
                                 BorderRadius.circular(AppSpacing.radiusFull),
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('프로필 사진 업로드는 추후 제공됩니다.'),
-                                ),
-                              );
+                              context.showAppSnackBar('프로필 사진 업로드는 추후 제공됩니다.');
                             },
                             child: Container(
                               width: 28,
@@ -255,12 +248,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                                     if (user == null) return;
                                     await user.sendEmailVerification();
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            '인증 메일을 보냈습니다. 메일함을 확인해주세요.',
-                                          ),
-                                        ),
+                                      context.showAppSnackBar(
+                                        '인증 메일을 보냈습니다. 메일함을 확인해주세요.',
                                       );
                                     }
                                   },

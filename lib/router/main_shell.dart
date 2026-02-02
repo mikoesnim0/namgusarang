@@ -29,11 +29,9 @@ class _MainShellState extends State<MainShell> {
         now.difference(_lastBackPressed!) > const Duration(seconds: 2)) {
       _lastBackPressed = now;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('앱을 종료하려면 한 번 더 눌러주세요'),
-            duration: Duration(seconds: 2),
-          ),
+        context.showAppSnackBar(
+          '앱을 종료하려면 한 번 더 눌러주세요',
+          duration: const Duration(milliseconds: 1600),
         );
       }
       return;

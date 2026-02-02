@@ -14,6 +14,7 @@ import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 
 class CouponsScreen extends ConsumerStatefulWidget {
   const CouponsScreen({super.key});
@@ -529,9 +530,7 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ref.read(homeControllerProvider.notifier).completeMission(MissionType.coupon);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('쿠폰이 사용 처리되었습니다')),
-      );
+      context.showAppSnackBar('쿠폰이 사용 처리되었습니다');
       return;
     }
 

@@ -9,6 +9,7 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 
 class ConnectProgramScreen extends StatelessWidget {
   const ConnectProgramScreen({super.key});
@@ -104,22 +105,18 @@ class ConnectProgramScreen extends StatelessWidget {
       path: _supportEmail,
       queryParameters: {
         'subject': '[Walker홀릭] 문의',
-        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0)',
+        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+2)',
       },
     );
 
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('메일 앱을 열 수 없습니다')),
-        );
+        context.showAppSnackBar('메일 앱을 열 수 없습니다');
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('메일 앱 열기 실패')),
-        );
+        context.showAppSnackBar('메일 앱 열기 실패');
       }
     }
   }
@@ -129,9 +126,7 @@ class ConnectProgramScreen extends StatelessWidget {
       await Share.share('Walker홀릭 초대 링크: $_inviteLink');
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('공유 기능을 사용할 수 없습니다')),
-        );
+        context.showAppSnackBar('공유 기능을 사용할 수 없습니다');
       }
     }
   }
@@ -139,9 +134,7 @@ class ConnectProgramScreen extends StatelessWidget {
   Future<void> _copyInvite(BuildContext context) async {
     await Clipboard.setData(const ClipboardData(text: _inviteLink));
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('초대 링크를 복사했습니다')),
-      );
+      context.showAppSnackBar('초대 링크를 복사했습니다');
     }
   }
 }
@@ -179,4 +172,3 @@ class _ProgramIcon extends StatelessWidget {
     );
   }
 }
-

@@ -76,9 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         error: (e, st) {
           if (!mounted) return;
           final msg = friendlyAuthError(e);
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(msg)));
+          context.showAppSnackBar(msg);
         },
       );
     });
