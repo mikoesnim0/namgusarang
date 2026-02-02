@@ -61,10 +61,7 @@ class ProfileScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.paddingMD),
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const CircleAvatar(
-                  backgroundColor: AppColors.gray200,
-                  child: Icon(Icons.person, color: AppColors.textSecondary),
-                ),
+                leading: _ProfileAvatar(userDoc: userDoc, authUser: authUser),
                 title: Text(nickname, style: AppTypography.bodyLarge),
                 subtitle: Text(email, style: AppTypography.bodySmall),
               ),
@@ -95,6 +92,29 @@ class ProfileScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.userDoc, required this.authUser});
+
+  final Map<String, dynamic>? userDoc;
+  final dynamic authUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final photoUrl =
+        (userDoc?['photoUrl'] as String?)?.trim() ??
+            (authUser?.photoURL as String?)?.trim() ??
+            '';
+    final hasPhoto = photoUrl.isNotEmpty;
+
+    return CircleAvatar(
+      backgroundColor: AppColors.gray200,
+      backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+      child:
+          hasPhoto ? null : const Icon(Icons.person, color: AppColors.textSecondary),
     );
   }
 }

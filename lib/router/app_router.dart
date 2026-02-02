@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../screens/auth/auth_screens.dart';
+import '../screens/auth/email_verification_screen.dart';
 import '../screens/coupons/coupon_detail_screen.dart';
 import '../screens/coupons/coupons_screen.dart';
 import '../screens/friends/friend_requests_screen.dart';
@@ -42,6 +43,7 @@ final appRouter = GoRouter(
     final loc = state.matchedLocation;
     final isAuthRoute = loc == '/' || loc == '/login' || loc == '/signup';
     final isOnboardingRoute = loc.startsWith('/onboarding');
+    final isVerifyEmailRoute = loc == '/verify-email';
 
     final isFirebaseReady = Firebase.apps.isNotEmpty;
     final isSignedIn =
@@ -50,9 +52,24 @@ final appRouter = GoRouter(
     // 보호 라우트: 로그인 안 돼있으면 무조건 로그인 화면으로
     if (!isSignedIn && !isAuthRoute) return '/login';
 
+    // Email verification gating: only for email/password users.
+    if (isSignedIn &&
+        !isAuthRoute &&
+        !isVerifyEmailRoute &&
+        isFirebaseReady) {
+      final user = FirebaseAuth.instance.currentUser!;
+      final isPasswordUser =
+          user.providerData.any((p) => p.providerId == 'password');
+      if (isPasswordUser && user.emailVerified == false) {
+        final from = Uri.encodeComponent(loc);
+        return '/verify-email?from=$from';
+      }
+    }
+
     // First-login gating: require body profile setup for kcal estimation.
     if (isSignedIn &&
         !isAuthRoute &&
+        !isVerifyEmailRoute &&
         !isOnboardingRoute &&
         isFirebaseReady) {
       final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -86,6 +103,18 @@ final appRouter = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
+    GoRoute(
+      path: '/verify-email',
+      pageBuilder: (context, state) {
+        final from = state.uri.queryParameters['from'];
+        final decodedFrom =
+            (from != null && from.isNotEmpty) ? Uri.decodeComponent(from) : null;
+        return _slidePage(
+          key: state.pageKey,
+          child: EmailVerificationScreen(from: decodedFrom),
+        );
+      },
+    ),
     GoRoute(
       path: '/onboarding/profile',
       pageBuilder: (context, state) {

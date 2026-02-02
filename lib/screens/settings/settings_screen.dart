@@ -93,6 +93,11 @@ class SettingsScreen extends ConsumerWidget {
       data: (settings) {
         final authUser = authUserAsync.valueOrNull;
         final userDoc = userDocAsync.valueOrNull;
+        final photoUrl =
+            (userDoc?['photoUrl'] as String?)?.trim() ??
+                authUser?.photoURL?.trim() ??
+                '';
+        final hasPhoto = photoUrl.isNotEmpty;
         final authDisplayName = authUser?.displayName?.trim();
         final authEmail = authUser?.email?.trim();
         final nickname =
@@ -113,9 +118,12 @@ class SettingsScreen extends ConsumerWidget {
           onTap: () => context.push('/my/info'),
           child: Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 backgroundColor: AppColors.gray200,
-                child: Icon(Icons.person, color: AppColors.textSecondary),
+                backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                child: hasPhoto
+                    ? null
+                    : const Icon(Icons.person, color: AppColors.textSecondary),
               ),
               const SizedBox(width: 12),
               Expanded(

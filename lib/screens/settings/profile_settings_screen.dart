@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 import 'package:hangookji_namgu/features/friends/friends_provider.dart';
@@ -31,6 +34,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   Gender? _gender;
   bool _didHydrate = false;
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -99,11 +103,75 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     }
   }
 
+  Future<void> _pickAndUploadPhoto() async {
+    if (_isUploadingPhoto) return;
+    final user = ref.read(authStateProvider).valueOrNull;
+    if (user == null) {
+      context.showAppSnackBar('로그인이 필요합니다');
+      return;
+    }
+
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('users')
+          .child(user.uid)
+          .child('profile.jpg');
+
+      await storageRef.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final url = await storageRef.getDownloadURL();
+
+      await ref.read(usersRepositoryProvider).updateProfile(
+            uid: user.uid,
+            photoUrl: url,
+          );
+      try {
+        await user.updatePhotoURL(url);
+      } catch (_) {
+        // ignore
+      }
+
+      // Keep `public_users` in sync for friend UI (best-effort).
+      try {
+        await ref.read(friendsRepositoryProvider).ensurePublicProfile();
+      } catch (_) {
+        // ignore
+      }
+
+      if (!mounted) return;
+      context.showAppSnackBar('프로필 사진이 변경되었습니다');
+    } catch (e) {
+      if (!mounted) return;
+      context.showAppSnackBar('프로필 사진 업로드 실패: $e');
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
     final authUser = ref.watch(authStateProvider).valueOrNull;
+    final photoUrl =
+        (userDoc?['photoUrl'] as String?)?.trim() ??
+            authUser?.photoURL?.trim() ??
+            '';
+    final hasPhoto = photoUrl.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('프로필')),
@@ -148,24 +216,30 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   Center(
                     child: Stack(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 44,
                           backgroundColor: AppColors.gray200,
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: AppColors.textSecondary,
-                          ),
+                          backgroundImage:
+                              hasPhoto ? NetworkImage(photoUrl) : null,
+                          child: hasPhoto
+                              ? null
+                              : const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: AppColors.textSecondary,
+                                ),
                         ),
+                        if (_isUploadingPhoto)
+                          const Positioned.fill(
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
                         Positioned(
                           right: 0,
                           bottom: 0,
                           child: InkWell(
                             borderRadius:
                                 BorderRadius.circular(AppSpacing.radiusFull),
-                            onTap: () {
-                              context.showAppSnackBar('프로필 사진 업로드는 추후 제공됩니다.');
-                            },
+                            onTap: _pickAndUploadPhoto,
                             child: Container(
                               width: 28,
                               height: 28,
