@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../screens/auth/auth_screens.dart';
 import '../screens/coupons/coupon_detail_screen.dart';
@@ -15,6 +16,7 @@ import '../screens/settings/connect_program_screen.dart';
 import '../screens/settings/notification_settings_screen.dart';
 import '../screens/settings/profile_settings_screen.dart';
 import '../screens/settings/settings_screen.dart';
+import '../screens/onboarding/profile_setup_screen.dart';
 import '../screens/walker/walker_tracking_screen.dart';
 import 'main_shell.dart';
 
@@ -36,9 +38,10 @@ CustomTransitionPage<void> _slidePage({required Widget child, LocalKey? key}) {
 
 final appRouter = GoRouter(
   initialLocation: '/',
-  redirect: (context, state) {
+  redirect: (context, state) async {
     final loc = state.matchedLocation;
     final isAuthRoute = loc == '/' || loc == '/login' || loc == '/signup';
+    final isOnboardingRoute = loc.startsWith('/onboarding');
 
     final isFirebaseReady = Firebase.apps.isNotEmpty;
     final isSignedIn =
@@ -47,6 +50,35 @@ final appRouter = GoRouter(
     // 보호 라우트: 로그인 안 돼있으면 무조건 로그인 화면으로
     if (!isSignedIn && !isAuthRoute) return '/login';
 
+    // First-login gating: require body profile setup for kcal estimation.
+    if (isSignedIn &&
+        !isAuthRoute &&
+        !isOnboardingRoute &&
+        isFirebaseReady) {
+      final uid = FirebaseAuth.instance.currentUser!.uid;
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+        final data = snap.data() ?? const <String, dynamic>{};
+        final gender = (data['gender'] as String?)?.trim() ?? '';
+        final height = data['heightCm'];
+        final weight = data['weightKg'];
+
+        final hasHeight = height is num && height > 0;
+        final hasWeight = weight is num && weight > 0;
+        final hasGender = gender.isNotEmpty;
+
+        if (!hasGender || !hasHeight || !hasWeight) {
+          final from = Uri.encodeComponent(loc);
+          return '/onboarding/profile?from=$from';
+        }
+      } catch (_) {
+        // If profile check fails, don't block navigation (avoid locking users out).
+      }
+    }
+
     // 요구사항: 로그인 상태여도 /login, /signup 접근 허용 (자동 홈 리다이렉트 금지)
     return null;
   },
@@ -54,6 +86,18 @@ final appRouter = GoRouter(
     GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/signup', builder: (context, state) => const SignupScreen()),
+    GoRoute(
+      path: '/onboarding/profile',
+      pageBuilder: (context, state) {
+        final from = state.uri.queryParameters['from'];
+        final decodedFrom =
+            (from != null && from.isNotEmpty) ? Uri.decodeComponent(from) : null;
+        return _slidePage(
+          key: state.pageKey,
+          child: ProfileSetupScreen(from: decodedFrom),
+        );
+      },
+    ),
     GoRoute(
       path: '/walker',
       pageBuilder: (context, state) =>

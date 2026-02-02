@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
@@ -25,6 +26,8 @@ class ProfileSettingsScreen extends ConsumerStatefulWidget {
 class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nicknameController;
+  late final TextEditingController _heightController;
+  late final TextEditingController _weightController;
 
   Gender? _gender;
   bool _didHydrate = false;
@@ -33,11 +36,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   void initState() {
     super.initState();
     _nicknameController = TextEditingController();
+    _heightController = TextEditingController();
+    _weightController = TextEditingController();
   }
 
   @override
   void dispose() {
     _nicknameController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -51,6 +58,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   Future<void> _save(ProfileSettings current) async {
     if (!_formKey.currentState!.validate()) return;
+    final heightCm = int.tryParse(_heightController.text.trim());
+    final weightKg = int.tryParse(_weightController.text.trim());
     final next = current.copyWith(
       nickname: _nicknameController.text.trim(),
       gender: _gender ?? current.gender,
@@ -67,6 +76,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           uid: user.uid,
           nickname: nickname,
           gender: next.gender.name,
+          heightCm: heightCm,
+          weightKg: weightKg,
         );
 
         // Keep `public_users` in sync for friend search (best-effort).
@@ -107,11 +118,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           if (!_didHydrate) {
             final docNickname = (userDoc?['nickname'] as String?)?.trim();
             final docGender = userDoc?['gender'] as String?;
+            final docHeight = userDoc?['heightCm'];
+            final docWeight = userDoc?['weightKg'];
 
             _nicknameController.text =
                 (docNickname?.isNotEmpty == true) ? docNickname! : p.nickname;
 
             _gender = _parseGender(docGender) ?? p.gender;
+            if (docHeight is num) _heightController.text = docHeight.round().toString();
+            if (docWeight is num) _weightController.text = docWeight.round().toString();
             _didHydrate = true;
           }
           final birthYear = (userDoc?['birthdate'] as String?)?.trim() ?? '';
@@ -194,6 +209,38 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                           placeholder: '출생연도',
                           initialValue: birthYearLabel,
                           readOnly: true,
+                        ),
+                        const SizedBox(height: AppSpacing.paddingMD),
+                        AppInput(
+                          label: '키 (cm)',
+                          placeholder: '예: 170',
+                          controller: _heightController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (v) {
+                            final value = int.tryParse((v ?? '').trim());
+                            if (value == null) return '키(cm)를 입력해주세요';
+                            if (value < 80 || value > 230) return '키는 80~230cm 범위';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.paddingMD),
+                        AppInput(
+                          label: '몸무게 (kg)',
+                          placeholder: '예: 65',
+                          controller: _weightController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (v) {
+                            final value = int.tryParse((v ?? '').trim());
+                            if (value == null) return '몸무게(kg)를 입력해주세요';
+                            if (value < 20 || value > 250) return '몸무게는 20~250kg 범위';
+                            return null;
+                          },
                         ),
                         const SizedBox(height: AppSpacing.paddingMD),
                         _DropdownRow<Gender>(

@@ -145,6 +145,8 @@ class FirestoreUsersRepository {
     String? birthdate,
     String? ageRange,
     String? gender,
+    int? heightCm,
+    int? weightKg,
   }) async {
     authDebugLog('users.updateProfile start', {
       'uid': uid,
@@ -153,6 +155,8 @@ class FirestoreUsersRepository {
       if (birthdate != null) 'birthdate': birthdate,
       if (ageRange != null) 'ageRange': ageRange,
       if (gender != null) 'gender': gender,
+      if (heightCm != null) 'heightCm': heightCm,
+      if (weightKg != null) 'weightKg': weightKg,
     });
     final ref = _userRef(uid);
     final update = <String, dynamic>{};
@@ -167,6 +171,8 @@ class FirestoreUsersRepository {
     if (birthdate != null) update['birthdate'] = birthdate;
     if (ageRange != null) update['ageRange'] = ageRange;
     if (gender != null) update['gender'] = gender;
+    if (heightCm != null) update['heightCm'] = heightCm;
+    if (weightKg != null) update['weightKg'] = weightKg;
 
     if (update.isEmpty) return;
     await ref.set(update, SetOptions(merge: true));
@@ -195,4 +201,3 @@ class FirestoreUsersRepository {
     return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
   }
 }
-
