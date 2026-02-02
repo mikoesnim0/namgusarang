@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async';
 
 import '../../features/auth/auth_providers.dart';
 import '../../features/friends/friends_model.dart';
@@ -24,183 +23,19 @@ class FriendsScreen extends ConsumerStatefulWidget {
 }
 
 class _FriendsScreenState extends ConsumerState<FriendsScreen> {
-  final _controller = TextEditingController();
   final _inviteCodeController = TextEditingController();
-  final _nicknameFocusNode = FocusNode();
-  final _nicknameLayerLink = LayerLink();
-  final _nicknameBoxKey = GlobalKey();
-
-  _AddMode _addMode = _AddMode.nickname;
-  Timer? _searchDebounce;
-  OverlayEntry? _searchOverlay;
 
   Set<String> _existingFriendUids = const {};
   Set<String> _outgoingRequestUids = const {};
   Set<String> _incomingRequestUids = const {};
 
   @override
-  void initState() {
-    super.initState();
-    _nicknameFocusNode.addListener(_onNicknameFocusChanged);
-  }
-
-  void _onNicknameFocusChanged() {
-    if (!_nicknameFocusNode.hasFocus) {
-      _removeSearchOverlay();
-    } else {
-      _scheduleOverlayUpdate();
-    }
-  }
-
-  @override
   void dispose() {
-    _controller.dispose();
     _inviteCodeController.dispose();
-    _searchDebounce?.cancel();
-    _removeSearchOverlay();
-    _nicknameFocusNode.removeListener(_onNicknameFocusChanged);
-    _nicknameFocusNode.dispose();
     super.dispose();
   }
 
-  void _removeSearchOverlay() {
-    _searchOverlay?.remove();
-    _searchOverlay = null;
-  }
-
-  void _scheduleOverlayUpdate() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _updateSearchOverlay();
-    });
-  }
-
-  void _updateSearchOverlay() {
-    if (_addMode != _AddMode.nickname) {
-      _removeSearchOverlay();
-      return;
-    }
-    if (!_nicknameFocusNode.hasFocus) {
-      _removeSearchOverlay();
-      return;
-    }
-
-    final query = ref.read(friendUserSearchQueryProvider).trim();
-    if (query.isEmpty) {
-      _removeSearchOverlay();
-      return;
-    }
-
-    final boxContext = _nicknameBoxKey.currentContext;
-    final renderBox = boxContext?.findRenderObject() as RenderBox?;
-    if (renderBox == null || !renderBox.hasSize) return;
-
-    final searchAsync = ref.read(publicUserSearchProvider);
-    final items = searchAsync.valueOrNull ?? const <PublicUser>[];
-    final authUid = ref.read(authStateProvider).valueOrNull?.uid;
-    final filtered = items.where((u) => u.uid != authUid).toList();
-
-    final shouldShow = searchAsync.isLoading || filtered.isNotEmpty;
-    if (!shouldShow) {
-      _removeSearchOverlay();
-      return;
-    }
-
-    final width = renderBox.size.width;
-
-    _searchOverlay ??= OverlayEntry(
-      builder: (overlayContext) {
-        return Positioned.fill(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => FocusScope.of(overlayContext).unfocus(),
-                ),
-              ),
-              CompositedTransformFollower(
-                link: _nicknameLayerLink,
-                showWhenUnlinked: false,
-                offset: const Offset(0, 48),
-                child: Material(
-                  color: Colors.transparent,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: width,
-                      maxWidth: width,
-                      maxHeight: 360,
-                    ),
-                    child: Material(
-                      elevation: 8,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusMD,
-                          ),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: _FriendSearchDropdown(
-                          searchAsync: searchAsync,
-                          authUid: authUid,
-                          existingFriendUids: _existingFriendUids,
-                          outgoingRequestUids: _outgoingRequestUids,
-                          incomingRequestUids: _incomingRequestUids,
-                          onRequest: (u) async {
-                            final repo = ref.read(friendsRepositoryProvider);
-                            await repo.ensurePublicProfile();
-                            await repo.sendRequestByUid(u.uid);
-                            ref
-                                    .read(
-                                      friendUserSearchQueryProvider.notifier,
-                                    )
-                                    .state =
-                                '';
-                            _controller.clear();
-                            _removeSearchOverlay();
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${u.nickname}님에게 요청을 보냈습니다.'),
-                              ),
-                            );
-                          },
-                          onOpenRequests: () {
-                            _removeSearchOverlay();
-                            context.push('/friends/requests');
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    final overlay = Overlay.of(context);
-    if (overlay != null && !_searchOverlay!.mounted) {
-      overlay.insert(_searchOverlay!);
-    } else {
-      _searchOverlay!.markNeedsBuild();
-    }
-  }
-
-  void _onNicknameSearchChanged(String v) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      ref.read(friendUserSearchQueryProvider.notifier).state = v;
-      _scheduleOverlayUpdate();
-    });
-  }
-
-  String _friendlyFunctionsError(Object e) {
+   String _friendlyFunctionsError(Object e) {
     if (e is FirebaseFunctionsException) {
       switch (e.code) {
         case 'not-found':
@@ -224,16 +59,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     final repo = ref.read(friendsRepositoryProvider);
     try {
       await repo.ensurePublicProfile();
-      if (_addMode == _AddMode.nickname) {
-        final nickname = _controller.text.trim();
-        await repo.sendRequestByNickname(nickname);
-        _controller.clear();
-        ref.read(friendUserSearchQueryProvider.notifier).state = '';
-      } else {
-        final code = _inviteCodeController.text.trim();
-        await repo.sendRequestByInviteCode(code);
-        _inviteCodeController.clear();
-      }
+      final code = _inviteCodeController.text.trim();
+      await repo.sendRequestByInviteCode(code);
+      _inviteCodeController.clear();
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
@@ -250,10 +78,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<PublicUser>>>(publicUserSearchProvider, (_, __) {
-      _scheduleOverlayUpdate();
-    });
-
     final friendsAsync = ref.watch(friendsStreamProvider);
     final incomingCount = ref.watch(incomingFriendRequestsCountProvider);
     final inviteInfo = ref.watch(inviteInfoProvider);
@@ -362,22 +186,8 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                     _InviteCard(info: inviteInfo),
                     const SizedBox(height: 12),
                     _AddFriendCard(
-                      mode: _addMode,
-                      nicknameController: _controller,
                       inviteCodeController: _inviteCodeController,
-                      onModeChanged: (m) {
-                        setState(() => _addMode = m);
-                        if (m != _AddMode.nickname) {
-                          _removeSearchOverlay();
-                        } else {
-                          _scheduleOverlayUpdate();
-                        }
-                      },
                       onSubmit: _submitAdd,
-                      onNicknameChanged: _onNicknameSearchChanged,
-                      nicknameFocusNode: _nicknameFocusNode,
-                      nicknameLayerLink: _nicknameLayerLink,
-                      nicknameBoxKey: _nicknameBoxKey,
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -404,8 +214,6 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
     );
   }
 }
-
-enum _AddMode { nickname, inviteCode }
 
 class _InviteCard extends StatelessWidget {
   const _InviteCard({required this.info});
@@ -455,77 +263,28 @@ class _InviteCard extends StatelessWidget {
 
 class _AddFriendCard extends StatelessWidget {
   const _AddFriendCard({
-    required this.mode,
-    required this.nicknameController,
     required this.inviteCodeController,
-    required this.onModeChanged,
     required this.onSubmit,
-    required this.onNicknameChanged,
-    required this.nicknameFocusNode,
-    required this.nicknameLayerLink,
-    required this.nicknameBoxKey,
   });
 
-  final _AddMode mode;
-  final TextEditingController nicknameController;
   final TextEditingController inviteCodeController;
-  final ValueChanged<_AddMode> onModeChanged;
   final VoidCallback onSubmit;
-  final ValueChanged<String> onNicknameChanged;
-  final FocusNode nicknameFocusNode;
-  final LayerLink nicknameLayerLink;
-  final Key nicknameBoxKey;
 
   @override
   Widget build(BuildContext context) {
-    // NOTE: This widget needs Provider access for the search query provider.
-    // It is wrapped as a Consumer below.
-    return Consumer(builder: (context, ref, _) => _build(context, ref));
-  }
-
-  Widget _build(BuildContext context, WidgetRef ref) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.paddingMD),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _ModeChip(
-                  label: '닉네임',
-                  selected: mode == _AddMode.nickname,
-                  onTap: () => onModeChanged(_AddMode.nickname),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ModeChip(
-                  label: '초대코드',
-                  selected: mode == _AddMode.inviteCode,
-                  onTap: () => onModeChanged(_AddMode.inviteCode),
-                ),
-              ),
-            ],
-          ),
+          Text('친구 추가', style: AppTypography.labelLarge),
           const SizedBox(height: 10),
-          if (mode == _AddMode.nickname)
-            _NicknameSearchRow(
-              key: nicknameBoxKey,
-              controller: nicknameController,
-              focusNode: nicknameFocusNode,
-              layerLink: nicknameLayerLink,
-              hintText: '닉네임 검색',
-              onChanged: onNicknameChanged,
-              onSubmitted: (_) => onSubmit(),
-            )
-          else
-            _InputRow(
-              controller: inviteCodeController,
-              hintText: '초대코드(6자리)로 친구 요청',
-              onSubmit: onSubmit,
-            ),
+          _InputRow(
+            controller: inviteCodeController,
+            hintText: '초대코드(6자리)로 친구 요청',
+            onSubmit: onSubmit,
+          ),
         ],
       ),
     );

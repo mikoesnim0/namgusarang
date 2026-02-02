@@ -93,12 +93,16 @@ class _CouponsScreenState extends ConsumerState<CouponsScreen> {
       backgroundColor: AppColors.gray50,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        leading: context.canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new),
-                onPressed: () => context.pop(),
-              )
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         titleSpacing: 0,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
