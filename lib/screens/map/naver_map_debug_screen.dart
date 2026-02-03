@@ -29,6 +29,18 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
   bool _didApplyDeepLink = false;
   bool _didAutoLocate = false;
 
+  Future<void> _zoomIn() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.updateCamera(NCameraUpdate.zoomIn());
+  }
+
+  Future<void> _zoomOut() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.updateCamera(NCameraUpdate.zoomOut());
+  }
+
   Future<void> _syncMarkers(List<Place> places) async {
     final controller = _controller;
     if (controller == null) return;
@@ -93,6 +105,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
     final uriPlaceId = GoRouterState.of(context).uri.queryParameters['placeId'];
     if (uriPlaceId != _deepLinkPlaceId) {
       _deepLinkPlaceId = uriPlaceId;
@@ -157,7 +170,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                 Positioned(
                   left: 12,
                   right: 12,
-                  bottom: 64,
+                  bottom: 64 + safeBottom,
                   child: ref
                       .watch(placeCouponsProvider(_selectedPlace!.id))
                       .when(
@@ -183,22 +196,38 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                 ),
               Positioned(
                 right: 12,
-                bottom: 12,
-                child: ElevatedButton.icon(
-                  onPressed: _isRequestingLocation
-                      ? null
-                      : () => _handleMyLocationTap(context),
-                  icon: const Icon(Icons.my_location, size: 18),
-                  label: const Text('현 위치'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.paddingMD,
-                      vertical: AppSpacing.paddingSM,
+                bottom: 12 + safeBottom,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _MapControlButton(
+                      icon: Icons.add,
+                      onPressed: _zoomIn,
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    _MapControlButton(
+                      icon: Icons.remove,
+                      onPressed: _zoomOut,
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: _isRequestingLocation
+                          ? null
+                          : () => _handleMyLocationTap(context),
+                      icon: const Icon(Icons.my_location, size: 18),
+                      label: const Text('현 위치'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.paddingMD,
+                          vertical: AppSpacing.paddingSM,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -373,6 +402,41 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _MapControlButton extends StatelessWidget {
+  const _MapControlButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Material(
+      color: Colors.white,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Center(
+            child: Icon(
+              icon,
+              size: 22,
+              color: enabled ? Colors.black87 : Colors.black26,
+            ),
+          ),
+        ),
       ),
     );
   }

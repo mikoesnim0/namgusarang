@@ -998,6 +998,18 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
   Place? _selectedPlace;
   bool _didAutoLocate = false;
 
+  Future<void> _zoomIn() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.updateCamera(NCameraUpdate.zoomIn());
+  }
+
+  Future<void> _zoomOut() async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.updateCamera(NCameraUpdate.zoomOut());
+  }
+
   @override
   void didUpdateWidget(covariant _PlacesMiniMap oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -1042,6 +1054,7 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
     final target = widget.places.isNotEmpty
         ? NLatLng(widget.places.first.lat, widget.places.first.lng)
         : const NLatLng(35.1595, 129.0756);
@@ -1067,7 +1080,7 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
           Positioned(
             left: 12,
             right: 12,
-            bottom: 56,
+            bottom: 56 + safeBottom,
             child: ref
                 .watch(placeCouponsProvider(_selectedPlace!.id))
                 .when(
@@ -1093,22 +1106,32 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
           ),
         Positioned(
           right: 12,
-          bottom: 12,
-          child: ElevatedButton.icon(
-            onPressed: _isRequestingLocation
-                ? null
-                : () => _handleMyLocationTap(context),
-            icon: const Icon(Icons.my_location, size: 18),
-            label: const Text('현 위치'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black87,
-              elevation: 2,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.paddingMD,
-                vertical: 8,
+          bottom: 12 + safeBottom,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _MiniMapControlButton(icon: Icons.add, onPressed: _zoomIn),
+              const SizedBox(height: 8),
+              _MiniMapControlButton(icon: Icons.remove, onPressed: _zoomOut),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _isRequestingLocation
+                    ? null
+                    : () => _handleMyLocationTap(context),
+                icon: const Icon(Icons.my_location, size: 18),
+                label: const Text('현 위치'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  elevation: 2,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.paddingMD,
+                    vertical: 8,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ],
@@ -1254,6 +1277,38 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniMapControlButton extends StatelessWidget {
+  const _MiniMapControlButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Material(
+      color: Colors.white,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: Icon(
+              icon,
+              size: 22,
+              color: enabled ? Colors.black87 : Colors.black26,
+            ),
+          ),
+        ),
       ),
     );
   }
