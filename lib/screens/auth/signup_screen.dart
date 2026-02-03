@@ -241,7 +241,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           context.showAppSnackBar('회원가입이 완료되었습니다! 인증 메일을 확인해주세요.');
           _didShowEmailInUseDialog = false;
           _clearForm();
-          context.go('/home');
+          context.go('/verify-email?from=%2Fhome');
         },
         error: (e, st) {
           if (!mounted) return;

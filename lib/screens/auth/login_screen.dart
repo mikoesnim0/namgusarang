@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../features/auth/auth_controller.dart';
 import '../../theme/app_colors.dart';
@@ -55,6 +56,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleAppleLogin() async {
     await ref.read(authControllerProvider.notifier).signInWithApple();
+  }
+
+  Future<void> _showResetPasswordDialog() async {
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('비밀번호 재설정'),
+        content: TextField(
+          controller: emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            hintText: 'example@email.com',
+            labelText: '이메일',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty || !email.contains('@')) {
+                context.showAppSnackBar('이메일을 확인해주세요.');
+                return;
+              }
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                if (!context.mounted) return;
+                Navigator.of(context).pop();
+                context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
+              } catch (e) {
+                if (!context.mounted) return;
+                context.showAppSnackBar(friendlyAuthError(e));
+              }
+            },
+            child: const Text('보내기'),
+          ),
+        ],
+      ),
+    );
+    emailController.dispose();
   }
 
   void _navigateToSignup() {
@@ -177,6 +224,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                   onSubmitted: (_) => _handleLogin(),
+                ),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showResetPasswordDialog,
+                    child: const Text('비밀번호를 잊으셨나요?'),
+                  ),
                 ),
 
                 const SizedBox(height: AppSpacing.paddingXL),

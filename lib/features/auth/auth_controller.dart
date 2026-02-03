@@ -283,6 +283,12 @@ String friendlyAuthError(Object error) {
     if (error.code == 'invalid-credential') {
       return '이메일/비밀번호가 올바르지 않습니다.';
     }
+    if (error.code == 'user-not-found' || error.code == 'wrong-password') {
+      return '이메일/비밀번호가 올바르지 않습니다.';
+    }
+    if (error.code == 'invalid-login-credentials') {
+      return '이메일/비밀번호가 올바르지 않습니다.';
+    }
     if (error.code == 'email-already-in-use') {
       return '이미 가입된 이메일입니다. 로그인해주세요.';
     }
