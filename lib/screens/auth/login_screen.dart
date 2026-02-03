@@ -102,7 +102,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
     );
-    emailController.dispose();
+    // Avoid disposing during the dialog pop animation (can trigger "used after disposed").
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      emailController.dispose();
+    });
   }
 
   void _navigateToSignup() {
