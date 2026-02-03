@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 
@@ -32,6 +33,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String _selectedGender = '';
   bool _termsAgreed = false;
   bool _privacyAgreed = false;
+  bool _didShowEmailInUseDialog = false;
+
+  FirebaseAuthException? _unwrapFirebaseAuthException(Object error) {
+    if (error is AuthActionException) return _unwrapFirebaseAuthException(error.cause);
+    if (error is FirebaseAuthException) return error;
+    return null;
+  }
+
+  Future<void> _sendPasswordResetEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      context.showAppSnackBar('이메일을 확인해주세요.');
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
+    } catch (e) {
+      if (!mounted) return;
+      context.showAppSnackBar(friendlyAuthError(e));
+    }
+  }
 
   void _clearForm() {
     _formKey.currentState?.reset();
@@ -215,6 +239,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         data: (_) {
           if (!mounted) return;
           context.showAppSnackBar('회원가입이 완료되었습니다! 인증 메일을 확인해주세요.');
+          _didShowEmailInUseDialog = false;
           _clearForm();
           context.go('/home');
         },
@@ -222,6 +247,45 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           if (!mounted) return;
           final rootContext = Navigator.of(context, rootNavigator: true).context;
           context.showAppSnackBar(friendlyAuthError(e));
+
+          final authEx = _unwrapFirebaseAuthException(e);
+          if (authEx?.code == 'email-already-in-use' &&
+              !_didShowEmailInUseDialog) {
+            _didShowEmailInUseDialog = true;
+            unawaited(() async {
+              if (!rootContext.mounted) return;
+              final action = await showDialog<int>(
+                context: rootContext,
+                builder: (context) => AlertDialog(
+                  title: const Text('이미 가입된 이메일'),
+                  content: const Text(
+                    '이미 가입된 이메일입니다. 로그인하거나 비밀번호를 재설정해주세요.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(0),
+                      child: const Text('닫기'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(1),
+                      child: const Text('비밀번호 재설정'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(2),
+                      child: const Text('로그인'),
+                    ),
+                  ],
+                ),
+              );
+              if (!mounted) return;
+              if (action == 1) {
+                await _sendPasswordResetEmail();
+              } else if (action == 2) {
+                context.go('/login');
+              }
+            }());
+          }
+
           if (!kDebugMode) return;
 
           // Debug-only: show full details dialog (but keep snackbar clean for release).

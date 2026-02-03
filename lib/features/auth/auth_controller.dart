@@ -283,6 +283,21 @@ String friendlyAuthError(Object error) {
     if (error.code == 'invalid-credential') {
       return '이메일/비밀번호가 올바르지 않습니다.';
     }
+    if (error.code == 'email-already-in-use') {
+      return '이미 가입된 이메일입니다. 로그인해주세요.';
+    }
+    if (error.code == 'weak-password') {
+      return '비밀번호가 너무 약합니다. 더 안전한 비밀번호로 다시 시도해주세요.';
+    }
+    if (error.code == 'invalid-email') {
+      return '올바른 이메일 형식이 아닙니다.';
+    }
+    if (error.code == 'user-disabled') {
+      return '비활성화된 계정입니다. 문의하기로 연락해주세요.';
+    }
+    if (error.code == 'too-many-requests') {
+      return '요청이 많습니다. 잠시 후 다시 시도해주세요.';
+    }
     if (error.code == 'network-request-failed') {
       return '네트워크 오류가 발생했습니다. 인터넷 연결을 확인한 뒤 다시 시도해주세요.';
     }
