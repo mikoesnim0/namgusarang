@@ -64,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('비밀번호 재설정'),
         content: TextField(
           controller: emailController,
@@ -76,24 +76,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('취소'),
           ),
           TextButton(
             onPressed: () async {
               final email = emailController.text.trim();
               if (email.isEmpty || !email.contains('@')) {
-                context.showAppSnackBar('이메일을 확인해주세요.');
+                if (!mounted) return;
+                this.context.showAppSnackBar('이메일을 확인해주세요.');
                 return;
               }
               try {
                 await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-                context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
+                if (!mounted) return;
+                Navigator.of(dialogContext).pop();
+                this.context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
               } catch (e) {
-                if (!context.mounted) return;
-                context.showAppSnackBar(friendlyAuthError(e));
+                if (!mounted) return;
+                this.context.showAppSnackBar(friendlyAuthError(e));
               }
             },
             child: const Text('보내기'),
