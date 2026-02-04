@@ -200,4 +200,93 @@ class FirestoreUsersRepository {
     final r = Random.secure();
     return List.generate(6, (_) => chars[r.nextInt(chars.length)]).join();
   }
+
+  static String _yyyyMmDd(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
+  }
+
+  /// Ensures cycle fields exist, and rolls to the next cycle when 10 days pass.
+  ///
+  /// Fields used in `users/{uid}`:
+  /// - `cycleStartDate` (String, yyyy-MM-dd)
+  /// - `cycleIndex` (int, 1..)
+  /// - `cycleCompletedDays` (List<int>)
+  /// - `lastCycleCheckDate` (String, yyyy-MM-dd) to avoid repeated writes per day.
+  Future<void> ensureCycleReady({required String uid}) async {
+    final ref = _userRef(uid);
+    final today = DateTime.now();
+    final todayStr = _yyyyMmDd(today);
+
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data() ?? const <String, dynamic>{};
+
+      final lastCheck = (data['lastCycleCheckDate'] as String?)?.trim();
+      if (lastCheck == todayStr) return;
+
+      final startStr = (data['cycleStartDate'] as String?)?.trim();
+      final startDate =
+          (startStr != null && startStr.isNotEmpty) ? DateTime.tryParse(startStr) : null;
+      final currentIndex = (data['cycleIndex'] is num)
+          ? (data['cycleIndex'] as num).round()
+          : 1;
+
+      DateTime effectiveStart = startDate ?? DateTime(today.year, today.month, today.day);
+      int effectiveIndex = currentIndex <= 0 ? 1 : currentIndex;
+      List<dynamic> completed = (data['cycleCompletedDays'] as List?) ?? const [];
+
+      // Day index is 1-based within the cycle.
+      int dayIndex = today
+              .difference(DateTime(effectiveStart.year, effectiveStart.month, effectiveStart.day))
+              .inDays +
+          1;
+
+      // If cycle ended, roll forward to a fresh cycle starting today.
+      if (dayIndex > 10) {
+        effectiveIndex += 1;
+        effectiveStart = DateTime(today.year, today.month, today.day);
+        completed = const [];
+        dayIndex = 1;
+      }
+
+      tx.set(
+        ref,
+        {
+          'cycleStartDate': _yyyyMmDd(effectiveStart),
+          'cycleIndex': effectiveIndex,
+          'cycleCompletedDays': completed,
+          'lastCycleCheckDate': todayStr,
+        },
+        SetOptions(merge: true),
+      );
+    });
+  }
+
+  Future<void> markCycleDayCompleted({
+    required String uid,
+    required int dayIndex,
+  }) async {
+    if (dayIndex < 1 || dayIndex > 10) return;
+    final ref = _userRef(uid);
+    await ref.set(
+      {
+        'cycleCompletedDays': FieldValue.arrayUnion([dayIndex]),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<void> markIntroSeen({required String uid}) async {
+    final ref = _userRef(uid);
+    await ref.set(
+      {
+        'introSeen': true,
+        'introSeenAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
 }

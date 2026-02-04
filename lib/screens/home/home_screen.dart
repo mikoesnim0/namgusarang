@@ -43,6 +43,15 @@ class HomeScreen extends ConsumerWidget {
 
   String _fmtTodayLabel(DateTime d) => '오늘 ${_fmtDate(d)}';
 
+  String _yyyyMmDd(DateTime d) {
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
+  }
+
+  DateTime _localDate(DateTime d) => DateTime(d.year, d.month, d.day);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AsyncValue<int>>(todayStepsProvider, (_, next) {
@@ -51,26 +60,13 @@ class HomeScreen extends ConsumerWidget {
       ref.read(homeControllerProvider.notifier).setTodaySteps(steps);
     });
 
-    // Coupon issuance UX (MVP): when the steps mission flips incomplete -> complete,
-    // issue a coupon to the current user and show a confirmation dialog.
-    ref.listen<HomeState>(homeControllerProvider, (prev, next) {
-      if (prev == null) return;
-
-      bool isStepsDone(HomeState s) =>
-          s.missions.any((m) => m.type == MissionType.steps && m.isCompleted);
-
-      final wasDone = isStepsDone(prev);
-      final nowDone = isStepsDone(next);
-      if (wasDone || !nowDone) return;
-
-      unawaited(_issueCouponForStepsMission(context, ref));
-    });
     ref.watch(stepsSyncControllerProvider);
 
     final home = ref.watch(homeControllerProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
     final authUser = ref.watch(authStateProvider).valueOrNull;
+    final authUid = authUser?.uid;
     final settingsNickname = settingsAsync.valueOrNull?.profile.nickname;
     final docNickname = (userDoc?['nickname'] as String?)?.trim();
     final authNickname = authUser?.displayName?.trim();
@@ -82,16 +78,99 @@ class HomeScreen extends ConsumerWidget {
         ? settingsNickname!.trim()
         : '닉네임';
 
-    final cycleEnd = DateTime.now().add(Duration(days: home.cycle.daysLeft));
-    final cycleStart = cycleEnd.subtract(const Duration(days: 9));
+    final now = DateTime.now();
+    final todayLocal = _localDate(now);
+    final todayStr = _yyyyMmDd(todayLocal);
+
+    // Firestore-backed 10-day cycle (local midnight-based).
+    final cycleStartStr = (userDoc?['cycleStartDate'] as String?)?.trim();
+    final cycleStartDate =
+        (cycleStartStr != null && cycleStartStr.isNotEmpty)
+            ? DateTime.tryParse(cycleStartStr)
+            : null;
+    final cycleStartLocal =
+        cycleStartDate != null ? _localDate(cycleStartDate) : todayLocal;
+    final rawDayIndex = todayLocal.difference(cycleStartLocal).inDays + 1;
+    final dayIndex = rawDayIndex.clamp(1, 10);
+    final isCycleOver = rawDayIndex > 10;
+
+    final cycleIndex = (userDoc?['cycleIndex'] is num)
+        ? (userDoc?['cycleIndex'] as num).round().clamp(1, 9999)
+        : 1;
+
+    final completedDaysRaw = (userDoc?['cycleCompletedDays'] as List?) ?? const [];
+    final completedDays = completedDaysRaw
+        .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+        .whereType<int>()
+        .where((d) => d >= 1 && d <= 10)
+        .toSet()
+        .toList()
+      ..sort();
+
+    final daysLeft = (10 - rawDayIndex).clamp(0, 10);
+    final cycleStart = isCycleOver ? todayLocal : cycleStartLocal;
+    final cycleEnd = cycleStart.add(const Duration(days: 9));
     final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
-    final todayLabel = _fmtTodayLabel(DateTime.now());
-    final todayIndex = (10 - home.cycle.daysLeft).clamp(1, 10);
+    final todayLabel = _fmtTodayLabel(todayLocal);
+    final todayIndex = dayIndex;
+
+    // Ensure cycle exists / rolls over automatically (once per day).
+    if (authUid != null &&
+        (userDoc?['lastCycleCheckDate'] as String?)?.trim() != todayStr) {
+      unawaited(ref.read(usersRepositoryProvider).ensureCycleReady(uid: authUid));
+    }
+
+    // Show first-time intro once.
+    if (authUid != null && (userDoc?['introSeen'] != true)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!context.mounted) return;
+        // Mark as seen first to avoid duplicate dialogs on rebuild.
+        unawaited(ref.read(usersRepositoryProvider).markIntroSeen(uid: authUid));
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Walker홀릭 시작하기'),
+            content: const Text(
+              'Walker홀릭은 10일 동안 “걷기 미션”을 진행하고,\n'
+              '목표를 달성하면 쿠폰을 발급받아 사용할 수 있는 앱입니다.\n\n'
+              '• 오늘의 걸음 수: 목표 달성까지 남은 걸음 확인\n'
+              '• 쿠폰함: 발급된 쿠폰 확인/사용\n'
+              '• 지도: 쿠폰 사용 가능한 매장 확인\n\n'
+              '지금부터 10일 미션을 시작할까요?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('시작'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
 
     final permissionStatus = ref
         .watch(stepsPermissionStatusProvider)
         .valueOrNull;
     final showTodoAndDebug = !_hideTodoAndDebugUi && !kReleaseMode;
+
+    // When steps mission completes, issue coupon and mark today's cycle day as completed.
+    ref.listen<HomeState>(homeControllerProvider, (prev, next) {
+      if (prev == null) return;
+      bool isStepsDone(HomeState s) =>
+          s.missions.any((m) => m.type == MissionType.steps && m.isCompleted);
+      final wasDone = isStepsDone(prev);
+      final nowDone = isStepsDone(next);
+      if (wasDone || !nowDone) return;
+      unawaited(_issueCouponForStepsMission(context, ref));
+      if (authUid != null) {
+        unawaited(
+          ref
+              .read(usersRepositoryProvider)
+              .markCycleDayCompleted(uid: authUid, dayIndex: todayIndex),
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -99,8 +178,8 @@ class HomeScreen extends ConsumerWidget {
         children: [
           _HomeHeader(
             nickname: nickname,
-            roundTitle: home.cycle.roundTitle,
-            daysLeft: home.cycle.daysLeft,
+            roundTitle: '${cycleIndex}회차',
+            daysLeft: daysLeft,
             onProfileTap: () => context.push('/my/info'),
             onSettingsTap: () => context.push('/settings'),
             todayLabel: todayLabel,
@@ -183,9 +262,9 @@ class HomeScreen extends ConsumerWidget {
                   ],
                   _SuccessDaysCard(
                     milestones: home.milestones,
-                    completed: home.completedMilestones,
+                    completed: completedDays,
                     todayIndex: todayIndex,
-                    daysLeft: home.cycle.daysLeft,
+                    daysLeft: daysLeft,
                   ),
                   const SizedBox(height: 22),
                   _TodayStepsCard(
