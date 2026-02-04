@@ -214,6 +214,7 @@ class FirestoreUsersRepository {
   /// - `cycleStartDate` (String, yyyy-MM-dd)
   /// - `cycleIndex` (int, 1..)
   /// - `cycleCompletedDays` (List<int>)
+  /// - `cycleFailedDays` (List<int>)
   /// - `lastCycleCheckDate` (String, yyyy-MM-dd) to avoid repeated writes per day.
   Future<void> ensureCycleReady({required String uid}) async {
     final ref = _userRef(uid);
@@ -236,7 +237,8 @@ class FirestoreUsersRepository {
 
       DateTime effectiveStart = startDate ?? DateTime(today.year, today.month, today.day);
       int effectiveIndex = currentIndex <= 0 ? 1 : currentIndex;
-      List<dynamic> completed = (data['cycleCompletedDays'] as List?) ?? const [];
+      final completedRaw = (data['cycleCompletedDays'] as List?) ?? const [];
+      final failedRaw = (data['cycleFailedDays'] as List?) ?? const [];
 
       // Day index is 1-based within the cycle.
       int dayIndex = today
@@ -248,8 +250,41 @@ class FirestoreUsersRepository {
       if (dayIndex > 10) {
         effectiveIndex += 1;
         effectiveStart = DateTime(today.year, today.month, today.day);
-        completed = const [];
+        // Reset per-cycle lists. (We don't carry forward failures/completions.)
+        tx.set(
+          ref,
+          {
+            'cycleStartDate': _yyyyMmDd(effectiveStart),
+            'cycleIndex': effectiveIndex,
+            'cycleCompletedDays': const <int>[],
+            'cycleFailedDays': const <int>[],
+            'lastCycleCheckDate': todayStr,
+          },
+          SetOptions(merge: true),
+        );
         dayIndex = 1;
+        return;
+      }
+
+      final completed = completedRaw
+          .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+          .whereType<int>()
+          .where((d) => d >= 1 && d <= 10)
+          .toSet();
+      final failed = failedRaw
+          .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+          .whereType<int>()
+          .where((d) => d >= 1 && d <= 10)
+          .toSet();
+
+      // Auto-mark past days as failed if they were never completed.
+      // This also fills gaps if the user didn't open the app for a few days.
+      if (dayIndex > 1) {
+        for (var d = 1; d <= dayIndex - 1 && d <= 10; d++) {
+          if (!completed.contains(d) && !failed.contains(d)) {
+            failed.add(d);
+          }
+        }
       }
 
       tx.set(
@@ -257,7 +292,8 @@ class FirestoreUsersRepository {
         {
           'cycleStartDate': _yyyyMmDd(effectiveStart),
           'cycleIndex': effectiveIndex,
-          'cycleCompletedDays': completed,
+          'cycleCompletedDays': completed.toList()..sort(),
+          'cycleFailedDays': failed.toList()..sort(),
           'lastCycleCheckDate': todayStr,
         },
         SetOptions(merge: true),
@@ -274,6 +310,8 @@ class FirestoreUsersRepository {
     await ref.set(
       {
         'cycleCompletedDays': FieldValue.arrayUnion([dayIndex]),
+        // If it was previously marked failed (e.g. device time issues), fix it.
+        'cycleFailedDays': FieldValue.arrayRemove([dayIndex]),
       },
       SetOptions(merge: true),
     );

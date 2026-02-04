@@ -107,6 +107,15 @@ class HomeScreen extends ConsumerWidget {
         .toList()
       ..sort();
 
+    final failedDaysRaw = (userDoc?['cycleFailedDays'] as List?) ?? const [];
+    final failedDays = failedDaysRaw
+        .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+        .whereType<int>()
+        .where((d) => d >= 1 && d <= 10)
+        .toSet()
+        .toList()
+      ..sort();
+
     final daysLeft = (10 - rawDayIndex).clamp(0, 10);
     final cycleStart = isCycleOver ? todayLocal : cycleStartLocal;
     final cycleEnd = cycleStart.add(const Duration(days: 9));
@@ -263,6 +272,7 @@ class HomeScreen extends ConsumerWidget {
                   _SuccessDaysCard(
                     milestones: home.milestones,
                     completed: completedDays,
+                    failed: failedDays,
                     todayIndex: todayIndex,
                     daysLeft: daysLeft,
                   ),
@@ -603,12 +613,14 @@ class _SuccessDaysCard extends StatelessWidget {
   const _SuccessDaysCard({
     required this.milestones,
     required this.completed,
+    required this.failed,
     required this.todayIndex,
     required this.daysLeft,
   });
 
   final List<int> milestones;
   final List<int> completed;
+  final List<int> failed;
   final int todayIndex;
   final int daysLeft;
 
@@ -662,7 +674,8 @@ class _SuccessDaysCard extends StatelessWidget {
                       filled: n <= todayIndex && completed.contains(n),
                       isToday: n == todayIndex,
                       isFuture: n > todayIndex,
-                      isFailed: n < todayIndex && !completed.contains(n),
+                      isFailed: failed.contains(n) ||
+                          (n < todayIndex && !completed.contains(n)),
                       size: size,
                     ),
                     if (n != milestones.last) const SizedBox(width: spacing),
