@@ -154,14 +154,6 @@ class _SplashScreenState extends State<SplashScreen>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.paddingSM),
-                      // 슬로건
-                      Text(
-                        '걸으며 쿠폰을 얻고 사용해요',
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: AppColors.textOnPrimary.withOpacity(0.9),
-                        ),
-                      ),
                       const SizedBox(height: AppSpacing.paddingXXL),
                       // 버전 정보
                       Text(
@@ -181,4 +173,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -11,13 +12,16 @@ import '../../features/foods/food_equivalents.dart';
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
 import '../../features/coupons/coupons_provider.dart';
+import '../../features/coupons/coupon_verification_code.dart';
 import '../../features/places/place.dart';
 import '../../features/places/places_provider.dart';
 import '../../features/steps/steps_provider.dart';
 import '../../features/steps/steps_repository.dart';
 import '../../features/steps/steps_sync_provider.dart';
+import '../../features/steps/step_metrics.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
+import '../../features/notifications/push_notifications_provider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
@@ -27,12 +31,24 @@ import '../../widgets/app_card.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/place_info_popup.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   // Temporary: hide "오늘 할 일" and debug actions during the release.
   // Flip to false after launch.
   static const bool _hideTodoAndDebugUi = true;
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _didScheduleIntroDialog = false;
+  String? _introForUid;
+  bool _didSchedulePushPrompt = false;
+  String? _pushPromptForUid;
+  bool _didScheduleStepsPermissionPrompt = false;
+  String? _stepsPermPromptForUid;
 
   String _fmtDate(DateTime d) {
     final yy = (d.year % 100).toString().padLeft(2, '0');
@@ -53,7 +69,7 @@ class HomeScreen extends ConsumerWidget {
   DateTime _localDate(DateTime d) => DateTime(d.year, d.month, d.day);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     ref.listen<AsyncValue<int>>(todayStepsProvider, (_, next) {
       final steps = next.valueOrNull;
       if (steps == null) return;
@@ -84,12 +100,12 @@ class HomeScreen extends ConsumerWidget {
 
     // Firestore-backed 10-day cycle (local midnight-based).
     final cycleStartStr = (userDoc?['cycleStartDate'] as String?)?.trim();
-    final cycleStartDate =
-        (cycleStartStr != null && cycleStartStr.isNotEmpty)
-            ? DateTime.tryParse(cycleStartStr)
-            : null;
-    final cycleStartLocal =
-        cycleStartDate != null ? _localDate(cycleStartDate) : todayLocal;
+    final cycleStartDate = (cycleStartStr != null && cycleStartStr.isNotEmpty)
+        ? DateTime.tryParse(cycleStartStr)
+        : null;
+    final cycleStartLocal = cycleStartDate != null
+        ? _localDate(cycleStartDate)
+        : todayLocal;
     final rawDayIndex = todayLocal.difference(cycleStartLocal).inDays + 1;
     final dayIndex = rawDayIndex.clamp(1, 10);
     final isCycleOver = rawDayIndex > 10;
@@ -98,23 +114,26 @@ class HomeScreen extends ConsumerWidget {
         ? (userDoc?['cycleIndex'] as num).round().clamp(1, 9999)
         : 1;
 
-    final completedDaysRaw = (userDoc?['cycleCompletedDays'] as List?) ?? const [];
-    final completedDays = completedDaysRaw
-        .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
-        .whereType<int>()
-        .where((d) => d >= 1 && d <= 10)
-        .toSet()
-        .toList()
-      ..sort();
+    final completedDaysRaw =
+        (userDoc?['cycleCompletedDays'] as List?) ?? const [];
+    final completedDays =
+        completedDaysRaw
+            .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+            .whereType<int>()
+            .where((d) => d >= 1 && d <= 10)
+            .toSet()
+            .toList()
+          ..sort();
 
     final failedDaysRaw = (userDoc?['cycleFailedDays'] as List?) ?? const [];
-    final failedDays = failedDaysRaw
-        .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
-        .whereType<int>()
-        .where((d) => d >= 1 && d <= 10)
-        .toSet()
-        .toList()
-      ..sort();
+    final failedDays =
+        failedDaysRaw
+            .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
+            .whereType<int>()
+            .where((d) => d >= 1 && d <= 10)
+            .toSet()
+            .toList()
+          ..sort();
 
     final daysLeft = (10 - rawDayIndex).clamp(0, 10);
     final cycleStart = isCycleOver ? todayLocal : cycleStartLocal;
@@ -122,19 +141,46 @@ class HomeScreen extends ConsumerWidget {
     final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
     final todayLabel = _fmtTodayLabel(todayLocal);
     final todayIndex = dayIndex;
+    final weightKg = (userDoc?['weightKg'] is num)
+        ? (userDoc?['weightKg'] as num).round()
+        : 70;
 
     // Ensure cycle exists / rolls over automatically (once per day).
     if (authUid != null &&
         (userDoc?['lastCycleCheckDate'] as String?)?.trim() != todayStr) {
-      unawaited(ref.read(usersRepositoryProvider).ensureCycleReady(uid: authUid));
+      unawaited(
+        ref.read(usersRepositoryProvider).ensureCycleReady(uid: authUid),
+      );
     }
 
     // Show first-time intro once.
-    if (authUid != null && (userDoc?['introSeen'] != true)) {
+    if (authUid != null && _introForUid != authUid) {
+      // New user session mounted in the same shell instance.
+      _introForUid = authUid;
+      _didScheduleIntroDialog = false;
+      _pushPromptForUid = authUid;
+      _didSchedulePushPrompt = false;
+      _stepsPermPromptForUid = authUid;
+      _didScheduleStepsPermissionPrompt = false;
+    }
+
+    if (authUid != null &&
+        (userDoc?['introSeen'] != true) &&
+        !_didScheduleIntroDialog) {
+      _didScheduleIntroDialog = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!context.mounted) return;
-        // Mark as seen first to avoid duplicate dialogs on rebuild.
-        unawaited(ref.read(usersRepositoryProvider).markIntroSeen(uid: authUid));
+        // Hard guard: show only once per device+user (Firestore can fail in
+        // release builds depending on rules/network).
+        final prefs = await SharedPreferences.getInstance();
+        final prefKey = 'introSeen_v1_$authUid';
+        if (prefs.getBool(prefKey) == true) return;
+        await prefs.setBool(prefKey, true);
+
+        // Also mark in Firestore for cross-device consistency (best-effort).
+        try {
+          await ref.read(usersRepositoryProvider).markIntroSeen(uid: authUid);
+        } catch (_) {}
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
@@ -161,7 +207,190 @@ class HomeScreen extends ConsumerWidget {
     final permissionStatus = ref
         .watch(stepsPermissionStatusProvider)
         .valueOrNull;
-    final showTodoAndDebug = !_hideTodoAndDebugUi && !kReleaseMode;
+    final needsStepsPermission =
+        permissionStatus == StepsPermissionStatus.denied ||
+        permissionStatus == StepsPermissionStatus.restricted ||
+        permissionStatus == StepsPermissionStatus.unknown;
+
+    // Steps permission is essential. If not granted, keep prompting (once per app run)
+    // and show the persistent card until granted.
+    if (authUid != null && _stepsPermPromptForUid != authUid) {
+      _stepsPermPromptForUid = authUid;
+      _didScheduleStepsPermissionPrompt = false;
+    }
+    if (authUid != null &&
+        needsStepsPermission &&
+        !_didScheduleStepsPermissionPrompt) {
+      _didScheduleStepsPermissionPrompt = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!context.mounted) return;
+
+        final allow = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE6FAF7), // primary50
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions_walk_rounded,
+                      size: 40,
+                      color: Color(0xFF10C4AE), // brandTeal
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Title
+                  const Text(
+                    '걸음수로 미션을 달성하세요',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111111),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  // Subtitle
+                  const Text(
+                    '걸음수를 자동으로 측정하고\n상태바에서 실시간으로 확인할 수 있어요.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF666666),
+                      height: 1.55,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  // Primary CTA - full width
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF10C4AE),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '허용하기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // De-emphasized secondary
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFAAAAAA),
+                    ),
+                    child: const Text(
+                      '나중에',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        if (!context.mounted) return;
+        if (allow != true) return;
+
+        final ok = await ref.read(stepsRepositoryProvider).requestPermission();
+        ref.invalidate(stepsPermissionStatusProvider);
+        if (ok) ref.invalidate(todayStepsProvider);
+
+        // 권한 허용 직후 잠금화면 알림 팁을 한 번만 표시
+        if (ok && context.mounted) {
+          final prefs = await SharedPreferences.getInstance();
+          const tipKey = 'lockscreen_notif_tip_shown';
+          if (prefs.getBool(tipKey) != true) {
+            await prefs.setBool(tipKey, true);
+            if (context.mounted) {
+              await _showLockScreenTipDialog(context, ref);
+            }
+          }
+        }
+      });
+    }
+
+    // Push prompt: show once per device+user after first login, so the user can
+    // receive mission/coupon/event notifications.
+    if (authUid != null && _pushPromptForUid != authUid) {
+      _pushPromptForUid = authUid;
+      _didSchedulePushPrompt = false;
+    }
+    // If steps permission isn't granted yet, don't stack the push permission dialog.
+    final okToPromptPush =
+        !needsStepsPermission ||
+        permissionStatus == StepsPermissionStatus.notSupported;
+    if (authUid != null && okToPromptPush && !_didSchedulePushPrompt) {
+      _didSchedulePushPrompt = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!context.mounted) return;
+        final prefs = await SharedPreferences.getInstance();
+        final prefKey = 'pushPromptSeen_v1_$authUid';
+        if (prefs.getBool(prefKey) == true) return;
+        await prefs.setBool(prefKey, true);
+
+        final allow = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('알림을 켤까요?'),
+            content: const Text(
+              '미션/쿠폰/이벤트 소식을 알림으로 받아볼 수 있어요.\n\n'
+              '원하지 않으면 “나중에”를 눌러도 되고,\n'
+              '언제든지 마이 > 알림에서 변경할 수 있어요.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('나중에'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('허용'),
+              ),
+            ],
+          ),
+        );
+        if (allow != true) return;
+        try {
+          final settings = await ref.read(settingsControllerProvider.future);
+          await ref
+              .read(pushNotificationsServiceProvider)
+              .syncTopics(
+                settings: settings.notifications,
+                uid: authUid,
+                requestPermission: true,
+              );
+        } catch (_) {
+          if (!context.mounted) return;
+          context.showAppSnackBar('알림 설정에 실패했어요. 마이 > 알림에서 다시 시도해주세요.');
+        }
+      });
+    }
+    final showTodoAndDebug = !HomeScreen._hideTodoAndDebugUi && !kReleaseMode;
 
     // When steps mission completes, issue coupon and mark today's cycle day as completed.
     ref.listen<HomeState>(homeControllerProvider, (prev, next) {
@@ -181,8 +410,13 @@ class HomeScreen extends ConsumerWidget {
       }
     });
 
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    // Keep enough spacing so the scroll content never sits behind the dock.
+    final navHeight = MediaQuery.sizeOf(context).height * (230.0 / 1920.0);
+    final bottomPad = (navHeight + bottomInset + 24).clamp(96.0, 320.0);
+
     return Scaffold(
-      backgroundColor: AppColors.gray50,
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           _HomeHeader(
@@ -195,11 +429,11 @@ class HomeScreen extends ConsumerWidget {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.screenPaddingHorizontal,
                 12,
                 AppSpacing.screenPaddingHorizontal,
-                72,
+                bottomPad,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -244,7 +478,7 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const Spacer(),
                       InkWell(
-                        onTap: () => context.showAppSnackBar('구독관리는 추후 연결됩니다.'),
+                        onTap: () => context.push('/my/subscription'),
                         child: Text(
                           '구독관리',
                           style: AppTypography.bodySmall.copyWith(
@@ -282,11 +516,77 @@ class HomeScreen extends ConsumerWidget {
                     goalSteps: home.mission.goalSteps,
                     remainingSteps: home.remainingSteps,
                     progress: home.progress,
+                    weightKg: weightKg,
                   ),
+                  const SizedBox(height: 10),
+                  // [DEBUG] 걸음수 진단 카드 — 배포 시 비활성화
+                  // if (permissionStatus != StepsPermissionStatus.granted ||
+                  //     home.todaySteps < 20) ...[
+                  //   AppCard(
+                  //     padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                  //     margin: EdgeInsets.zero,
+                  //     child: Column(
+                  //       crossAxisAlignment: CrossAxisAlignment.start,
+                  //       children: [
+                  //         Row(
+                  //           children: [
+                  //             Text('걸음수 진단', style: AppTypography.labelLarge),
+                  //             const Spacer(),
+                  //             Text(
+                  //               '권한: ${permissionStatus?.name ?? 'unknown'}',
+                  //               style: AppTypography.bodySmall.copyWith(
+                  //                 color: AppColors.textSecondary,
+                  //                 fontWeight: FontWeight.w700,
+                  //               ),
+                  //             ),
+                  //           ],
+                  //         ),
+                  //         const SizedBox(height: 8),
+                  //         Text(
+                  //           '걸음수가 안 늘어나면 대시보드에서 센서 상태를 확인하고, 권한을 다시 요청해보세요.',
+                  //           style: AppTypography.bodySmall.copyWith(
+                  //             color: AppColors.textSecondary,
+                  //           ),
+                  //         ),
+                  //         const SizedBox(height: 12),
+                  //         Row(
+                  //           children: [
+                  //             Expanded(
+                  //               child: AppButton(
+                  //                 text: '대시보드 열기',
+                  //                 variant: ButtonVariant.outline,
+                  //                 isFullWidth: true,
+                  //                 onPressed: () => context.push('/walker'),
+                  //               ),
+                  //             ),
+                  //             const SizedBox(width: 12),
+                  //             Expanded(
+                  //               child: AppButton(
+                  //                 text: '권한 재요청',
+                  //                 variant: ButtonVariant.outline,
+                  //                 isFullWidth: true,
+                  //                 onPressed: () async {
+                  //                   final ok = await ref
+                  //                       .read(stepsRepositoryProvider)
+                  //                       .requestPermission();
+                  //                   if (!context.mounted) return;
+                  //                   ref.invalidate(
+                  //                     stepsPermissionStatusProvider,
+                  //                   );
+                  //                   if (ok) ref.invalidate(todayStepsProvider);
+                  //                 },
+                  //               ),
+                  //             ),
+                  //           ],
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ],
                   const SizedBox(height: 18),
                   _CouponPlacesMapCard(
                     placesAsync: ref.watch(activePlacesProvider),
-                    onOpenFullMap: () => context.go('/map'),
+                    onOpenFullMap: () => context.push('/map'),
                   ),
                   const SizedBox(height: 12),
                   if (showTodoAndDebug) ...[
@@ -360,6 +660,121 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  /// 잠금화면 알림 설정 안내 다이얼로그 (걸음수 권한 허용 직후 1회만 표시)
+  Future<void> _showLockScreenTipDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE6FAF7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.lock_outline_rounded,
+                  size: 34,
+                  color: Color(0xFF10C4AE),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                '잠금화면에서도 걸음수 확인',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111111),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '잠금화면에서 실시간 걸음수를 바로 볼 수 있어요.\n아래 설정을 허용해주세요.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF666666),
+                  height: 1.55,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 14),
+              // 경로 안내
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  '설정 → 잠금화면 → 알림 → 허용',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF333333),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    await ref
+                        .read(stepsRepositoryProvider)
+                        .openLockScreenSettings();
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF10C4AE),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '설정 바로가기',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFAAAAAA),
+                ),
+                child: const Text(
+                  '나중에',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _issueCouponForStepsMission(
     BuildContext context,
     WidgetRef ref,
@@ -392,7 +807,7 @@ class HomeScreen extends ConsumerWidget {
     final d = now.day.toString().padLeft(2, '0');
     final issueKey = 'steps_${y}${m}${d}';
 
-    final code = (math.Random().nextInt(900000) + 100000).toString();
+    final code = stableCouponVerificationCode(placeId: place.id, title: title);
     final expiresAt = now.add(const Duration(days: 7));
 
     final issued = await ref
@@ -586,25 +1001,32 @@ class _DaysLeftCard extends StatelessWidget {
 }
 
 class _DigitBox extends StatelessWidget {
-  const _DigitBox({required this.digit});
+  const _DigitBox({required this.digit, this.large = false});
 
   final String digit;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
+    final w = large ? 40.0 : 28.0;
+    final h = large ? 50.0 : 36.0;
+    final style = large
+        ? AppTypography.h5.copyWith(
+            fontWeight: FontWeight.w900,
+            fontSize: 28,
+          )
+        : AppTypography.h5.copyWith(fontWeight: FontWeight.w700);
+
     return Container(
-      width: 28,
-      height: 36,
+      width: w,
+      height: h,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),
-      child: Text(
-        digit,
-        style: AppTypography.h5.copyWith(fontWeight: FontWeight.w700),
-      ),
+      child: Text(digit, style: style),
     );
   }
 }
@@ -628,64 +1050,89 @@ class _SuccessDaysCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final clamped = daysLeft.clamp(0, 99);
     final text = clamped.toString().padLeft(2, '0');
+    const requiredDays = 3;
 
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.paddingMD),
-      margin: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+    return Column(
+      children: [
+        // ── Countdown (카드 바깥) ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '이번 미션 종료까지',
+              style: AppTypography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 10),
+            _DigitBox(digit: text[0], large: true),
+            const SizedBox(width: 6),
+            _DigitBox(digit: text[1], large: true),
+            const SizedBox(width: 10),
+            Text(
+              '일 남았어요!',
+              style: AppTypography.bodyLarge.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // ── 안내 텍스트 + 데이 서클 (경계 없이, FAFAFA 배경) ──
+        Builder(builder: (context) {
+          final remaining = (requiredDays - completed.length).clamp(0, requiredDays);
+          final label = remaining > 0
+              ? '10일 중 $remaining일만 목표에 달성 하면 돼요!'
+              : '목표를 모두 달성했어요!';
+          return Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.paddingMD,
+              vertical: AppSpacing.paddingLG,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
+            ),
+            child: Column(
               children: [
-                Text('이번 미션 종료까지', style: AppTypography.bodySmall),
-                const SizedBox(width: 6),
-                _DigitBox(digit: text[0]),
-                const SizedBox(width: 4),
-                _DigitBox(digit: text[1]),
-                const SizedBox(width: 6),
-                Text('일 남았어요!', style: AppTypography.bodySmall),
+                Text(
+                  label,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: const Color(0xFF757576),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const spacing = 8.0;
+                    final available = constraints.maxWidth;
+                    final size =
+                        ((available - spacing * 9) / 10).clamp(28.0, 44.0);
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (final n in milestones) ...[
+                          _SuccessDayCircle(
+                            text: '$n',
+                            filled: n <= todayIndex && completed.contains(n),
+                            isToday: n == todayIndex,
+                            isFuture: n > todayIndex,
+                            isFailed: failed.contains(n),
+                            size: size,
+                          ),
+                          if (n != milestones.last)
+                            const SizedBox(width: spacing),
+                        ],
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const spacing = 6.0;
-              final available = constraints.maxWidth;
-              // Make 10 circles fit without horizontal scrolling.
-              final size = ((available - spacing * 9) / 10).clamp(20.0, 30.0);
-
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (final n in milestones) ...[
-                    // Only show "completed" for past/today.
-                    // Never mark future days as completed even if the dummy data contains them.
-                    //
-                    // States:
-                    // - past completed: teal filled
-                    // - past not completed: gray filled
-                    // - today: red ring (filled teal if completed)
-                    // - future: light gray (disabled)
-                    _SuccessDayCircle(
-                      text: '$n',
-                      filled: n <= todayIndex && completed.contains(n),
-                      isToday: n == todayIndex,
-                      isFuture: n > todayIndex,
-                      isFailed: failed.contains(n) ||
-                          (n < todayIndex && !completed.contains(n)),
-                      size: size,
-                    ),
-                    if (n != milestones.last) const SizedBox(width: spacing),
-                  ],
-                ],
-              );
-            },
-          ),
-        ],
-      ),
+          );
+        }),
+      ],
     );
   }
 }
@@ -709,29 +1156,44 @@ class _SuccessDayCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = isFuture
-        ? AppColors.gray200
-        : isFailed
-        ? Colors.red.shade200
-        : isToday
-        ? AppColors.primary500
-        : AppColors.border;
+    // ── 색상 결정 (타겟 디자인 기준) ──
+    final Color bgColor;
+    final Color fgColor;
+    final Color borderColor;
+    final double borderWidth;
 
-    final bgColor = isToday
-        ? (filled ? AppColors.primary500 : AppColors.surface)
-        : isFuture
-        ? AppColors.gray50
-        : isFailed
-        ? Colors.red.shade50
-        : (filled ? AppColors.primary500 : AppColors.gray100);
+    if (isFailed) {
+      bgColor = Colors.red.shade50;
+      fgColor = Colors.red.shade700;
+      borderColor = Colors.red.shade200;
+      borderWidth = 1;
+    } else if (filled) {
+      // 완료 (오늘 포함): 진한 민트 채움, 흰 글자
+      bgColor = AppColors.brandTeal;
+      fgColor = Colors.white;
+      borderColor = AppColors.brandTeal;
+      borderWidth = 0;
+    } else if (isToday) {
+      // 오늘 (미완료): 민트 테두리, 흰 배경
+      bgColor = AppColors.surface;
+      fgColor = AppColors.brandTeal;
+      borderColor = AppColors.brandTeal;
+      borderWidth = 2;
+    } else if (isFuture) {
+      // 미래: 밝은 회색
+      bgColor = AppColors.gray100;
+      fgColor = AppColors.gray400;
+      borderColor = AppColors.gray100;
+      borderWidth = 0;
+    } else {
+      // 과거 미완료: 중간 회색
+      bgColor = AppColors.gray200;
+      fgColor = AppColors.textSecondary;
+      borderColor = AppColors.gray200;
+      borderWidth = 0;
+    }
 
-    final fgColor = isToday
-        ? (filled ? AppColors.textOnPrimary : AppColors.textSecondary)
-        : isFuture
-        ? AppColors.gray400
-        : isFailed
-        ? Colors.red.shade700
-        : (filled ? AppColors.textOnPrimary : AppColors.textSecondary);
+    final fontSize = size > 34 ? 14.0 : 11.0;
 
     return Container(
       width: size,
@@ -740,11 +1202,17 @@ class _SuccessDayCircle extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: bgColor,
-        border: Border.all(color: borderColor, width: 1),
+        border: borderWidth > 0
+            ? Border.all(color: borderColor, width: borderWidth)
+            : null,
       ),
       child: Text(
         isFailed ? '✕' : text,
-        style: AppTypography.labelSmall.copyWith(color: fgColor),
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: fgColor,
+        ),
       ),
     );
   }
@@ -756,16 +1224,18 @@ class _TodayStepsCard extends StatelessWidget {
     required this.goalSteps,
     required this.remainingSteps,
     required this.progress,
+    required this.weightKg,
   });
 
   final int steps;
   final int goalSteps;
   final int remainingSteps;
   final double progress;
+  final int weightKg;
 
   @override
   Widget build(BuildContext context) {
-    final kcal = (steps * 0.023).round();
+    final kcal = StepMetrics.kcalFromSteps(steps: steps, weightKg: weightKg);
     final km = steps * 0.00023;
     final percent = progress * 100;
     final foodEquivalent = suggestFoodEquivalentForKcal(kcal);
@@ -1476,7 +1946,9 @@ String _comma(int value) {
   return buffer.toString();
 }
 
-String _percent(double value) => (value * 100).toStringAsFixed(1);class _StepsPermissionCard extends StatelessWidget {
+String _percent(double value) => (value * 100).toStringAsFixed(1);
+
+class _StepsPermissionCard extends StatelessWidget {
   const _StepsPermissionCard({required this.onGrant});
   final VoidCallback onGrant;
   @override

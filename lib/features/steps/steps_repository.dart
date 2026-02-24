@@ -12,10 +12,12 @@ enum StepsPermissionStatus {
 }
 
 class StepsRepository {
-  static const _methodChannel =
-      MethodChannel('com.doyakmin.hangookji.namgu/steps');
-  static const _eventChannel =
-      EventChannel('com.doyakmin.hangookji.namgu/steps_stream');
+  static const _methodChannel = MethodChannel(
+    'com.doyakmin.hangookji.namgu/steps',
+  );
+  static const _eventChannel = EventChannel(
+    'com.doyakmin.hangookji.namgu/steps_stream',
+  );
 
   bool get _isSupportedPlatform {
     if (kIsWeb) return false;
@@ -35,8 +37,9 @@ class StepsRepository {
   Future<StepsPermissionStatus> getPermissionStatus() async {
     if (!_isSupportedPlatform) return StepsPermissionStatus.notSupported;
     try {
-      final raw =
-          await _methodChannel.invokeMethod<String>('getPermissionStatus');
+      final raw = await _methodChannel.invokeMethod<String>(
+        'getPermissionStatus',
+      );
       return _parsePermissionStatus(raw);
     } on PlatformException {
       return StepsPermissionStatus.unknown;
@@ -99,5 +102,62 @@ class StepsRepository {
       'notSupported' => StepsPermissionStatus.notSupported,
       _ => StepsPermissionStatus.unknown,
     };
+  }
+
+  /// Android only: keep counting in background and show an ongoing notification.
+  Future<bool> startBackgroundSteps() async {
+    if (!_isSupportedPlatform) return false;
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _methodChannel.invokeMethod<bool>('startBackgroundSteps') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Android only: stop background counting notification/service.
+  Future<bool> stopBackgroundSteps() async {
+    if (!_isSupportedPlatform) return false;
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _methodChannel.invokeMethod<bool>('stopBackgroundSteps') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  /// Android only: open lock screen notification settings.
+  Future<void> openLockScreenSettings() async {
+    if (!_isSupportedPlatform) return;
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _methodChannel.invokeMethod<void>('openLockScreenSettings');
+    } on PlatformException {
+      // ignore
+    } on MissingPluginException {
+      // ignore
+    }
+  }
+
+  /// Android only.
+  Future<bool> isBackgroundStepsRunning() async {
+    if (!_isSupportedPlatform) return false;
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      return await _methodChannel.invokeMethod<bool>(
+            'isBackgroundStepsRunning',
+          ) ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
   }
 }

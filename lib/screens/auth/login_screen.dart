@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleAppleLogin() async {
     await ref.read(authControllerProvider.notifier).signInWithApple();
+  }
+
+  Future<void> _navigatePostAuth() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final data = snap.data() ?? const <String, dynamic>{};
+      final gender = (data['gender'] as String?)?.trim() ?? '';
+      final height = data['heightCm'];
+      final weight = data['weightKg'];
+      final hasProfile = gender.isNotEmpty &&
+          height is num &&
+          height > 0 &&
+          weight is num &&
+          weight > 0;
+      if (!hasProfile && mounted) {
+        context.go('/onboarding/profile?from=%2Fhome');
+        return;
+      }
+    } catch (e) {
+      debugPrint('Post-auth profile check failed: $e');
+    }
+    if (mounted) context.go('/home');
   }
 
   Future<void> _showResetPasswordDialog() async {
@@ -122,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         data: (_) {
           if (!mounted) return;
           _passwordController.clear();
-          context.go('/home');
+          _navigatePostAuth();
         },
         error: (e, st) {
           if (!mounted) return;
@@ -180,13 +208,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppSpacing.paddingLG),
                       Text('Walker홀릭', style: AppTypography.h2),
-                      const SizedBox(height: AppSpacing.paddingSM),
-                      Text(
-                        '걸으며 쿠폰을 얻고 사용해요',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
                     ],
                   ),
                 ),

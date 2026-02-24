@@ -49,6 +49,19 @@ class AuthController extends AsyncNotifier<void> {
     }
   }
 
+  Future<void> _applyReferralOnSignup(String code) async {
+    final normalized = code.trim().toUpperCase();
+    if (normalized.isEmpty) return;
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: _functionsRegion);
+      final callable = functions.httpsCallable('applyReferralOnSignup');
+      await callable.call({'code': normalized});
+    } catch (e) {
+      // Best-effort: do not block signup if referral fails.
+      debugPrint('applyReferralOnSignup failed: $e');
+    }
+  }
+
   Future<void> _run(String actionName, Future<void> Function() action) async {
     state = const AsyncLoading();
     try {
@@ -103,6 +116,7 @@ class AuthController extends AsyncNotifier<void> {
     required String nickname,
     required String birthdate,
     required String gender,
+    String? referralCode,
   }) async {
     await _run('signup/email', () async {
       _ensureFirebaseReady();
@@ -131,6 +145,9 @@ class AuthController extends AsyncNotifier<void> {
         gender: gender,
       );
       await _ensurePublicProfileIndex();
+      if (referralCode != null && referralCode.trim().isNotEmpty) {
+        await _applyReferralOnSignup(referralCode);
+      }
     });
   }
 

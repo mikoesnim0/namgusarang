@@ -105,7 +105,8 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+    // Use `padding.bottom` so 3-button navigation bars (Android) are respected.
+    final safeBottom = MediaQuery.of(context).padding.bottom;
     final uriPlaceId = GoRouterState.of(context).uri.queryParameters['placeId'];
     if (uriPlaceId != _deepLinkPlaceId) {
       _deepLinkPlaceId = uriPlaceId;
@@ -170,7 +171,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                 Positioned(
                   left: 12,
                   right: 12,
-                  bottom: 64 + safeBottom,
+                  bottom: 72 + safeBottom,
                   child: ref
                       .watch(placeCouponsProvider(_selectedPlace!.id))
                       .when(
@@ -196,7 +197,7 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
                 ),
               Positioned(
                 right: 12,
-                bottom: 12 + safeBottom,
+                bottom: 16 + safeBottom,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,

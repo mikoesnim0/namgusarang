@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app_info.dart';
+
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
@@ -105,7 +107,7 @@ class ConnectProgramScreen extends StatelessWidget {
       path: _supportEmail,
       queryParameters: {
         'subject': '[Walker홀릭] 문의',
-        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+2)',
+        'body': '문의 내용을 적어주세요.\n\n(앱 버전: ${AppInfo.versionLabel})',
       },
     );
 

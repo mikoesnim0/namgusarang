@@ -1,0 +1,159 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidStepCount(steps) {
+      return steps is int
+        && steps >= 0
+        && steps <= 100000; // Max 100k steps per day
+    }
+
+    function isValidDateKey(dayKey) {
+      // Format: YYYY-MM-DD (e.g., "2026-02-17")
+      return dayKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function parseYear(dayKey) {
+      return int(dayKey.split('-')[0]);
+    }
+
+    function parseMonth(dayKey) {
+      return int(dayKey.split('-')[1]);
+    }
+
+    function parseDay(dayKey) {
+      return int(dayKey.split('-')[2]);
+    }
+
+    function isNotFutureDate(dayKey) {
+      let year = parseYear(dayKey);
+      let month = parseMonth(dayKey);
+      let day = parseDay(dayKey);
+
+      // Prevent future dates
+      return year < request.time.year()
+        || (year == request.time.year() && month < request.time.month())
+        || (year == request.time.year() && month == request.time.month() && day <= request.time.date());
+    }
+
+    function isRecentDate(dayKey) {
+      // Only allow writing to dates within the past 7 days
+      let dateTimestamp = timestamp.date(
+        parseYear(dayKey),
+        parseMonth(dayKey),
+        parseDay(dayKey)
+      );
+      let sevenDaysAgo = duration.value(7, 'd');
+
+      return request.time.toMillis() - dateTimestamp.toMillis() < sevenDaysAgo.toMillis();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && (!('todaySteps' in request.resource.data) || isValidStepCount(request.resource.data.todaySteps))
+        // Block server-only fields on create
+        && !request.resource.data.keys()
+            .hasAny([
+              'subscriptionStatus', 'subscriptionExpiresAt',
+              'subscriptionPurchaseToken', 'subscriptionProductId',
+              'subscriptionActivatedAt', 'subscriptionFreeUntil',
+              'subscriptionFreeSource', 'subscriptionFreeUpdatedAt',
+              'referredByUid', 'referredByCode', 'referredAt'
+            ]);
+
+      allow update: if isOwner(userId)
+        // Validate todaySteps if present
+        && (!('todaySteps' in request.resource.data) || isValidStepCount(request.resource.data.todaySteps))
+
+        // cycleCompletedDays should not be modified by client
+        // (Only Cloud Functions should update this)
+        && (!('cycleCompletedDays' in request.resource.data)
+            || !('cycleCompletedDays' in resource.data)
+            || request.resource.data.cycleCompletedDays == resource.data.cycleCompletedDays)
+
+        // CRITICAL: Block all server-only fields from client modification.
+        // Cloud Functions use Admin SDK which bypasses these rules.
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny([
+              'subscriptionStatus', 'subscriptionExpiresAt',
+              'subscriptionPurchaseToken', 'subscriptionProductId',
+              'subscriptionActivatedAt', 'subscriptionFreeUntil',
+              'subscriptionFreeSource', 'subscriptionFreeUpdatedAt',
+              'referredByUid', 'referredByCode', 'referredAt'
+            ]);
+
+      // Daily steps subcollection
+      match /daily_steps/{dayKey} {
+        allow read: if isOwner(userId);
+
+        allow create, update: if isOwner(userId)
+          // Validate date key format
+          && isValidDateKey(dayKey)
+
+          // Prevent future dates
+          && isNotFutureDate(dayKey)
+
+          // Only allow recent dates (prevent backfilling old data)
+          && isRecentDate(dayKey)
+
+          // Validate step count
+          && isValidStepCount(request.resource.data.steps)
+
+          // Ensure date field matches document ID
+          && request.resource.data.date == dayKey;
+
+        allow delete: if false; // Prevent deletion
+      }
+    }
+
+    // Payment history subcollection (server-write only, user-read)
+    match /users/{userId}/payment_history/{docId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    // Entitlements subcollection (server-write only, user-read)
+    match /users/{userId}/entitlements/{docId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    // Coupons collection (read-only for clients)
+    match /coupons/{couponId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    // User coupons subcollection
+    match /users/{userId}/coupons/{couponId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Only Cloud Functions can issue coupons
+    }
+
+    // Places collection
+    match /places/{placeId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── 임시 완화: 2026-03-01부터 아래를 다시 deny로 전환할 것 ──
+    // Default: 인증된 사용자에게 읽기 허용 (미정의 컬렉션 대비)
+    match /{document=**} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app_info.dart';
+
 import 'package:hangookji_namgu/features/auth/auth_controller.dart';
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 import '../../features/settings/settings_provider.dart';
@@ -16,9 +18,7 @@ import '../../widgets/app_snackbar.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  static const _supportEmail = 'support@namgusarang.app';
-  // TODO: Replace with the dedicated Walker홀릭 account-deletion page URL when ready.
-  static const _deleteAccountUrl = 'https://doyakmin.com/delete-account';
+  static const _supportEmail = 'doyakmin@gmail.com';
 
   Future<void> _launchExternal(
     BuildContext context, {
@@ -33,14 +33,19 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _openSupportMail(BuildContext context) async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: _supportEmail,
-      queryParameters: {
-        'subject': '[Walker홀릭] 문의',
-        'body': '문의 내용을 적어주세요.\n\n(앱 버전: v1.0.0+2)',
-      },
+  Future<void> _openSupportMail(
+    BuildContext context, {
+    required String appVersion,
+    required String uid,
+  }) async {
+    final subject = '[Walker홀릭] 문의';
+    final body = '문의 내용을 적어주세요.\n\n앱 UID: $uid\n앱 버전: $appVersion';
+    // Some email clients show `+` literally when the URI uses `application/x-www-form-urlencoded`.
+    // Build a query string using percent-encoding (`%20`) instead.
+    final uri = Uri.parse(
+      'mailto:$_supportEmail'
+      '?subject=${Uri.encodeQueryComponent(subject)}'
+      '&body=${Uri.encodeQueryComponent(body)}',
     );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -51,6 +56,56 @@ class SettingsScreen extends ConsumerWidget {
       if (context.mounted) {
         context.showAppSnackBar('메일 앱 열기 실패');
       }
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+        title: Row(
+          children: [
+            const Expanded(child: Text('계정 삭제(탈퇴)')),
+            IconButton(
+              tooltip: '닫기',
+              onPressed: () => Navigator.of(context).pop(false),
+              icon: const Icon(Icons.close),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Walker홀릭 서비스에서 탈퇴하면 모든 데이터가 삭제되며 복구할 수 없습니다.\n\n정말 탈퇴하시겠어요?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              '탈퇴하기',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      final user = ref.read(authStateProvider).valueOrNull;
+      if (user == null) return;
+      await user.delete();
+      if (!context.mounted) return;
+      context.go('/login');
+    } catch (e) {
+      if (!context.mounted) return;
+      context.showAppSnackBar('계정 삭제 실패: 재로그인 후 다시 시도해주세요.');
     }
   }
 
@@ -78,7 +133,8 @@ class SettingsScreen extends ConsumerWidget {
     final authUserAsync = ref.watch(authStateProvider);
     final userDocAsync = ref.watch(currentUserDocProvider);
 
-    const appVersion = 'v1.0.0+2';
+    const appVersion = AppInfo.versionLabel;
+    final uid = authUserAsync.valueOrNull?.uid ?? '(unknown)';
 
     final header = settingsAsync.when(
       loading: () => const ListTile(
@@ -200,6 +256,11 @@ class SettingsScreen extends ConsumerWidget {
                       title: '알림',
                       onTap: () => context.push('/my/notifications'),
                     ),
+                    const Divider(height: 1),
+                    _SettingsTile(
+                      title: '구독 관리',
+                      onTap: () => context.push('/my/subscription'),
+                    ),
                   ],
                 ),
               ),
@@ -235,20 +296,19 @@ class SettingsScreen extends ConsumerWidget {
                     const Divider(height: 1),
                     _SettingsTile(
                       title: '문의 하기',
+                      subtitle: 'UID: $uid',
                       onTap: () {
-                        _openSupportMail(context);
+                        _openSupportMail(
+                          context,
+                          appVersion: appVersion,
+                          uid: uid,
+                        );
                       },
                     ),
                     const Divider(height: 1),
                     _SettingsTile(
                       title: '계정 삭제 요청(탈퇴)',
-                      onTap: () {
-                        _launchExternal(
-                          context,
-                          title: '계정 삭제 요청(탈퇴)',
-                          url: _deleteAccountUrl,
-                        );
-                      },
+                      onTap: () => _showDeleteAccountDialog(context, ref),
                     ),
                   ],
                 ),
@@ -322,16 +382,29 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({required this.title, required this.onTap});
+  const _SettingsTile({
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
 
   final String title;
   final VoidCallback onTap;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(title, style: AppTypography.bodyLarge),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle!,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          : null,
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );

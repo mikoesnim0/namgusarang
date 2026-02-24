@@ -33,7 +33,10 @@ android {
         applicationId = "com.doyakmin.hangookji.namgu"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Health Connect (androidx.health.connect) requires minSdk 26.
+        // We still keep the existing sensor-based step stream for real-time UI,
+        // but aggregated totals are read from Health Connect on supported devices.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

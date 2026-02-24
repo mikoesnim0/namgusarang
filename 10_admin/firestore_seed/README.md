@@ -11,6 +11,7 @@ This folder contains scripts to seed Firestore collections for development.
 - `seed_places.js`: seeds `/places`
 - `export_places_to_csv.js`: exports `/places` into a CSV (for bulk editing)
 - `seed_user_coupons.js`: seeds `/users/{uid}/coupons`
+- `delete_users_with_conquerCount.js`: deletes `users/{uid}` docs that contain legacy field `conquerCount`
 
 ## Input CSV
 Default CSV path (relative to this folder):
@@ -82,4 +83,27 @@ Dry run (all users):
 
 ```bash
 node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true --dryRun true
+```
+
+## Delete legacy users (conquerCount)
+
+If you imported an older dataset and want to remove user documents that still have the legacy field `conquerCount`, use the script below.
+
+Dry run (prints matches, does not delete):
+
+```bash
+npm run delete_legacy_conquerCount_dry
+```
+
+Commit (deletes the matching `users/{uid}` docs):
+
+```bash
+npm run delete_legacy_conquerCount
+```
+
+Advanced (limit / batch size):
+
+```bash
+node delete_users_with_conquerCount.js --serviceAccount serviceAccountKey.json --commit true --limit 50
+node delete_users_with_conquerCount.js --serviceAccount serviceAccountKey.json --dryRun true --batchSize 500
 ```

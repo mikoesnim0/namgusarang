@@ -27,6 +27,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
   final _nicknameController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   final _birthdateController = TextEditingController();
   int? _selectedBirthYear;
 
@@ -63,6 +64,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _passwordController.clear();
     _passwordConfirmController.clear();
     _nicknameController.clear();
+    _referralCodeController.clear();
     _birthdateController.clear();
     _selectedBirthYear = null;
     _selectedGender = '';
@@ -83,6 +85,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _passwordController.dispose();
     _passwordConfirmController.dispose();
     _nicknameController.dispose();
+    _referralCodeController.dispose();
     _birthdateController.dispose();
     super.dispose();
   }
@@ -108,6 +111,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           nickname: _nicknameController.text.trim(),
           birthdate: _birthdateController.text.trim(),
           gender: _selectedGender,
+          referralCode: _referralCodeController.text.trim(),
         );
   }
 
@@ -411,6 +415,38 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     }
                     if (value.length > 12) {
                       return '닉네임은 최대 12자까지 가능합니다';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: AppSpacing.paddingMD),
+
+                // 추천인(초대코드) - 선택
+                AppInput(
+                  label: '추천인(초대코드) (선택)',
+                  placeholder: '6자리 코드',
+                  controller: _referralCodeController,
+                  textInputAction: TextInputAction.next,
+                  keyboardType: TextInputType.text,
+                  hint: '회원가입 시 1회만 입력 가능 (입력 시 1개월 무료 + 친구 자동 추가)',
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z]')),
+                    LengthLimitingTextInputFormatter(6),
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      return newValue.copyWith(
+                        text: newValue.text.toUpperCase(),
+                        selection: newValue.selection,
+                        composing: newValue.composing,
+                      );
+                    }),
+                  ],
+                  validator: (value) {
+                    final v = (value ?? '').trim();
+                    if (v.isEmpty) return null;
+                    if (v.length != 6) return '초대코드는 6자리입니다';
+                    if (!RegExp(r'^[0-9A-Z]{6}$').hasMatch(v)) {
+                      return '초대코드 형식이 올바르지 않습니다';
                     }
                     return null;
                   },

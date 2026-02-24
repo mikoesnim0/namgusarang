@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:crop_your_image/crop_your_image.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
 import 'package:hangookji_namgu/features/friends/friends_provider.dart';
@@ -34,7 +35,26 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
   Gender? _gender;
   bool _didHydrate = false;
+  bool _isPhotoFlowInProgress = false;
   bool _isUploadingPhoto = false;
+
+  String _friendlyUploadError(Object error) {
+    if (error is FirebaseException) {
+      // firebase_storage uses `FirebaseException` with plugin="firebase_storage"
+      final code = error.code.trim();
+      return switch (code) {
+        'unauthorized' || 'permission-denied' =>
+          '저장소 권한이 없어서 업로드할 수 없어요.',
+        'invalid-argument' => '업로드 요청이 올바르지 않아요. (메타데이터 설정 문제)',
+        'canceled' => '업로드가 취소되었습니다.',
+        'unknown' => '업로드 중 알 수 없는 오류가 발생했어요.',
+        'object-not-found' =>
+          '저장소에서 파일을 찾을 수 없어요. 잠시 후 다시 시도해주세요.',
+        _ => '업로드 실패: $code',
+      };
+    }
+    return '프로필 사진 업로드에 실패했습니다.';
+  }
 
   @override
   void initState() {
@@ -104,35 +124,54 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   }
 
   Future<void> _pickAndUploadPhoto() async {
-    if (_isUploadingPhoto) return;
+    if (_isPhotoFlowInProgress) return;
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) {
       context.showAppSnackBar('로그인이 필요합니다');
       return;
     }
 
+    setState(() => _isPhotoFlowInProgress = true);
     final picker = ImagePicker();
-    final file = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
-    if (file == null) return;
-
-    setState(() => _isUploadingPhoto = true);
     try {
-      final bytes = await file.readAsBytes();
-      final storageRef = FirebaseStorage.instance
-          .ref()
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (!mounted) return;
+      if (picked == null) return;
+
+      final originalBytes = await XFile(picked.path).readAsBytes();
+      if (!mounted) return;
+
+      final croppedBytes = await Navigator.of(context).push<Uint8List?>(
+        MaterialPageRoute(
+          builder: (context) => _InlineCropScreen(imageBytes: originalBytes),
+          fullscreenDialog: true,
+        ),
+      );
+      if (!mounted) return;
+      if (croppedBytes == null) return;
+
+      setState(() => _isUploadingPhoto = true);
+      final storage = FirebaseStorage.instance;
+      final storageRef = storage.ref()
           .child('users')
           .child(user.uid)
-          .child('profile.jpg');
+          .child('profile.png');
 
       await storageRef.putData(
-        bytes,
-        SettableMetadata(contentType: 'image/jpeg'),
+        croppedBytes,
+        SettableMetadata(
+          contentType: 'image/png',
+        ),
       );
+
+      // Use the SDK-provided download URL.
+      // NOTE: Do NOT set `firebaseStorageDownloadTokens` from the client.
+      // It is reserved and will cause HTTP 400.
       final url = await storageRef.getDownloadURL();
 
       await ref.read(usersRepositoryProvider).updateProfile(
@@ -156,9 +195,14 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       context.showAppSnackBar('프로필 사진이 변경되었습니다');
     } catch (e) {
       if (!mounted) return;
-      context.showAppSnackBar('프로필 사진 업로드 실패: $e');
+      context.showAppSnackBar(_friendlyUploadError(e));
     } finally {
-      if (mounted) setState(() => _isUploadingPhoto = false);
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+          _isPhotoFlowInProgress = false;
+        });
+      }
     }
   }
 
@@ -175,6 +219,26 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('프로필')),
+      bottomNavigationBar: settingsAsync.whenOrNull(
+        data: (settings) {
+          final p = settings.profile;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.paddingLG,
+                AppSpacing.paddingSM,
+                AppSpacing.paddingLG,
+                AppSpacing.paddingMD,
+              ),
+              child: AppButton(
+                text: '저장',
+                isFullWidth: true,
+                onPressed: () => _save(p),
+              ),
+            ),
+          );
+        },
+      ),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
@@ -388,17 +452,90 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.paddingXL),
-                  AppButton(
-                    text: '저장',
-                    isFullWidth: true,
-                    onPressed: () => _save(p),
-                  ),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _InlineCropScreen extends StatefulWidget {
+  const _InlineCropScreen({required this.imageBytes});
+
+  final Uint8List imageBytes;
+
+  @override
+  State<_InlineCropScreen> createState() => _InlineCropScreenState();
+}
+
+class _InlineCropScreenState extends State<_InlineCropScreen> {
+  final _controller = CropController();
+  bool _isCropping = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('프로필 사진 편집'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () {
+            if (canPop) Navigator.of(context).pop(null);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isCropping
+                ? null
+                : () {
+                    setState(() => _isCropping = true);
+                    _controller.crop();
+                  },
+            child: const Text('완료'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Crop(
+                controller: _controller,
+                image: widget.imageBytes,
+                onCropped: (result) {
+                  if (!mounted) return;
+                  setState(() => _isCropping = false);
+                  switch (result) {
+                    case CropSuccess(:final croppedImage):
+                      Navigator.of(context).pop(croppedImage);
+                      break;
+                    case CropFailure(:final cause):
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('이미지 자르기 실패: $cause')),
+                      );
+                      Navigator.of(context).pop(null);
+                      break;
+                  }
+                },
+                withCircleUi: true,
+                aspectRatio: 1,
+                baseColor: Colors.white,
+                maskColor: Colors.black.withValues(alpha: 0.35),
+                radius: 0,
+              ),
+            ),
+            if (_isCropping)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -1,31 +1,120 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../coupons/coupons_provider.dart';
-import '../home/home_provider.dart';
 import '../settings/settings_provider.dart';
+import '../auth/auth_providers.dart';
+import '../steps/step_metrics.dart';
 import 'profile_model.dart';
+
+String _yyyyMmDd(DateTime d) {
+  final y = d.year.toString().padLeft(4, '0');
+  final m = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '$y-$m-$day';
+}
+
+DateTime _localDate(DateTime d) => DateTime(d.year, d.month, d.day);
+
+DateTime _cycleStartFromUserDoc(Map<String, dynamic>? userDoc) {
+  final startStr = (userDoc?['cycleStartDate'] as String?)?.trim();
+  final parsed =
+      (startStr != null && startStr.isNotEmpty) ? DateTime.tryParse(startStr) : null;
+  if (parsed != null) return _localDate(parsed);
+  return _localDate(DateTime.now());
+}
+
+bool _isYyyyMmDdKey(String s) {
+  // Strictly match `yyyy-MM-dd` so we don't accidentally sum malformed legacy ids.
+  // (Monthly calendar grid also ignores non-matching keys.)
+  return RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s);
+}
+
+final cycleStepsSumProvider = StreamProvider<int>((ref) {
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+  if (uid == null) return const Stream.empty();
+
+  final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
+  final start = _cycleStartFromUserDoc(userDoc);
+  final end = start.add(const Duration(days: 9));
+
+  final startKey = _yyyyMmDd(start);
+  final nextKey = _yyyyMmDd(end.add(const Duration(days: 1)));
+
+  final q = FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .collection('daily_steps')
+      .orderBy(FieldPath.documentId)
+      .startAt([startKey])
+      .endBefore([nextKey]);
+
+  return q.snapshots().map((snap) {
+    var sum = 0;
+    for (final doc in snap.docs) {
+      if (!_isYyyyMmDdKey(doc.id)) continue;
+      final steps = doc.data()['steps'];
+      if (steps is int) {
+        sum += steps;
+      } else if (steps is num) {
+        sum += steps.round();
+      }
+    }
+    return sum;
+  });
+});
+
+final totalStepsSumProvider = StreamProvider<int>((ref) {
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+  if (uid == null) return const Stream.empty();
+
+  final q = FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .collection('daily_steps')
+      .orderBy(FieldPath.documentId);
+
+  return q.snapshots().map((snap) {
+    var sum = 0;
+    for (final doc in snap.docs) {
+      if (!_isYyyyMmDdKey(doc.id)) continue;
+      final steps = doc.data()['steps'];
+      if (steps is int) {
+        sum += steps;
+      } else if (steps is num) {
+        sum += steps.round();
+      }
+    }
+    return sum;
+  });
+});
 
 final personalStatsProvider = Provider<PersonalStats>((ref) {
   final coupons = ref.watch(couponsStreamProvider).valueOrNull ?? const [];
-  final home = ref.watch(homeControllerProvider);
   ref.watch(settingsControllerProvider);
+  final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
 
-  final now = DateTime.now();
-  final cycleEnd = now.add(Duration(days: home.cycle.daysLeft));
-  final cycleStart = cycleEnd.subtract(const Duration(days: 9));
+  final cycleStart = _cycleStartFromUserDoc(userDoc);
+  final cycleEnd = cycleStart.add(const Duration(days: 9));
 
-  // Dummy baseline values (to match UI sample, and it still reacts to todaySteps changes).
-  final cycleSteps =
-      37_688 + home.todaySteps; // default: 40,554 when todaySteps=2,866
-  final totalSteps =
-      168_077 + home.todaySteps; // default: 170,943 when todaySteps=2,866
+  final cycleSteps = ref.watch(cycleStepsSumProvider).valueOrNull ?? 0;
+  final totalSteps = ref.watch(totalStepsSumProvider).valueOrNull ?? 0;
 
-  // Dummy heuristics (kcal/거리 환산은 추후 신체정보/헬스데이터 기반으로 교체 예정)
-  final cycleCaloriesKcal = (cycleSteps * 0.03538).round();
+  final weightKg = (userDoc?['weightKg'] is num)
+      ? (userDoc?['weightKg'] as num).round()
+      : 70; // fallback for legacy users
+
+  // Calories: keep consistent with Home/Walker.
+  final cycleCaloriesKcal = StepMetrics.kcalFromSteps(
+    steps: cycleSteps,
+    weightKg: weightKg,
+  );
   final totalDistanceKm =
       totalSteps * 0.0007985; // ≈136.53km when totalSteps=170,943
-  final totalCaloriesKcal = (totalSteps * 0.03381)
-      .round(); // ≈5,780kcal when totalSteps=170,943
+  final totalCaloriesKcal = StepMetrics.kcalFromSteps(
+    steps: totalSteps,
+    weightKg: weightKg,
+  );
 
   final usedCoupons = coupons.where((c) => c.status.name == 'used').length;
 

@@ -1,7 +1,9 @@
 package com.doyakmin.hangookji.namgu
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -12,8 +14,11 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat.startForegroundService
 import androidx.core.content.ContextCompat
-import io.flutter.embedding.android.FlutterActivity
+import android.app.Activity
+import android.provider.Settings
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -22,7 +27,7 @@ import java.util.Calendar
 import java.util.Locale
 
 class StepsApi(
-  private val activity: FlutterActivity,
+  private val activity: Activity,
   messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler, SensorEventListener {
   private val methodChannel = MethodChannel(messenger, "com.doyakmin.hangookji.namgu/steps")
@@ -52,8 +57,19 @@ class StepsApi(
 
   override fun onCancel(arguments: Any?) {
     eventSink = null
-    if (pendingGetStepsResult == null) {
-      stopSensor()
+
+    // CRITICAL FIX: Always stop sensor to prevent memory leak
+    // Previously, sensor was not stopped if pendingGetStepsResult was set,
+    // causing the sensor to remain registered even after the stream was canceled.
+    stopSensor()
+
+    // Cancel any pending timeout handlers to avoid calling destroyed activities
+    mainHandler.removeCallbacksAndMessages(null)
+
+    // Release pending getTodaySteps result if exists
+    if (pendingGetStepsResult != null) {
+      pendingGetStepsResult?.success(null)
+      pendingGetStepsResult = null
     }
   }
 
@@ -63,7 +79,38 @@ class StepsApi(
       "getPermissionStatus" -> result.success(permissionStatus())
       "requestPermission" -> requestPermission(result)
       "getTodaySteps" -> getTodaySteps(result)
+      "startBackgroundSteps" -> result.success(startBackgroundSteps())
+      "stopBackgroundSteps" -> result.success(stopBackgroundSteps())
+      "isBackgroundStepsRunning" -> result.success(isBackgroundStepsRunning())
+      "openLockScreenSettings" -> openLockScreenSettings(result)
       else -> result.notImplemented()
+    }
+  }
+
+  private fun openLockScreenSettings(result: MethodChannel.Result) {
+    // 삼성 잠금화면 알림 설정 화면을 직접 열기 시도, 실패 시 일반 설정으로 폴백
+    val actionsToTry = listOf(
+      "android.settings.LOCK_SCREEN_SETTINGS",
+      "com.samsung.android.app.lockscreen.settings",
+    )
+    for (action in actionsToTry) {
+      try {
+        val intent = Intent(action).apply {
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        activity.startActivity(intent)
+        result.success(true)
+        return
+      } catch (_: Exception) {}
+    }
+    try {
+      val intent = Intent(Settings.ACTION_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      activity.startActivity(intent)
+      result.success(true)
+    } catch (e: Exception) {
+      result.success(false)
     }
   }
 
@@ -110,7 +157,13 @@ class StepsApi(
     pendingPermissionResult?.success(granted)
     pendingPermissionResult = null
 
-    if (granted) startSensorIfPossible() else stopSensor()
+    if (granted) {
+      startSensorIfPossible()
+      // Auto-start persistent notification immediately after user grants permission
+      startBackgroundSteps()
+    } else {
+      stopSensor()
+    }
 
     // If a Dart call is waiting for steps, release it with null on denial.
     if (!granted && pendingGetStepsResult != null) {
@@ -132,6 +185,12 @@ class StepsApi(
     val cached = lastTodaySteps
     if (cached != null) {
       result.success(cached)
+      return
+    }
+
+    val prefCached = readCachedTodaySteps()
+    if (prefCached != null) {
+      result.success(prefCached)
       return
     }
 
@@ -175,6 +234,7 @@ class StepsApi(
 
     if (lastTodaySteps == today) return
     lastTodaySteps = today
+    cacheTodaySteps(today)
 
     eventSink?.success(today)
 
@@ -234,6 +294,95 @@ class StepsApi(
     private const val REQUEST_CODE_ACTIVITY = 9103
     private const val KEY_BASELINE_DATE = "baseline_date"
     private const val KEY_BASELINE_TOTAL = "baseline_total"
+    private const val KEY_LAST_TODAY_DATE = "last_today_date"
+    private const val KEY_LAST_TODAY_STEPS = "last_today_steps"
+    private const val KEY_BG_RUNNING = "bg_steps_running"
+  }
+
+  private fun cacheTodaySteps(todaySteps: Int) {
+    val today = todayKey()
+    prefs.edit()
+      .putString(KEY_LAST_TODAY_DATE, today)
+      .putInt(KEY_LAST_TODAY_STEPS, if (todaySteps < 0) 0 else todaySteps)
+      .apply()
+  }
+
+  private fun readCachedTodaySteps(): Int? {
+    val today = todayKey()
+
+    // Check cache date
+    val cacheDate = prefs.getString(KEY_LAST_TODAY_DATE, null) ?: return null
+    if (cacheDate != today) return null
+
+    // IMPORTANT: Also check baseline date to detect reboots.
+    // If baseline is not set for today, the cache is stale (from before reboot).
+    val baselineDate = prefs.getString(KEY_BASELINE_DATE, null)
+    if (baselineDate != today) {
+      // Baseline not yet set for today → sensor hasn't fired since reboot/midnight
+      // Don't trust cache, wait for sensor event
+      return null
+    }
+
+    val steps = prefs.getInt(KEY_LAST_TODAY_STEPS, 0)
+    return if (steps < 0) 0 else steps
+  }
+
+  /**
+   * Called from MainActivity.onResume to ensure the step tracking
+   * notification is always running when the app is open.
+   * No-op if permission is not granted or sensor is not available.
+   */
+  fun ensureBackgroundStepsRunning() {
+    if (!hasActivityPermission()) return
+    if (isBackgroundStepsRunning()) return
+    startBackgroundSteps()
+  }
+
+  private fun isBackgroundStepsRunning(): Boolean {
+    val flagged = prefs.getBoolean(KEY_BG_RUNNING, false)
+    if (!flagged) return false
+    return isServiceRunning(StepsForegroundService::class.java)
+  }
+
+  private fun startBackgroundSteps(): Boolean {
+    if (stepCounterSensor == null) return false
+    if (!hasActivityPermission()) return false
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      val granted = ContextCompat.checkSelfPermission(
+        activity,
+        Manifest.permission.POST_NOTIFICATIONS,
+      ) == PackageManager.PERMISSION_GRANTED
+      if (!granted) return false
+      if (!NotificationManagerCompat.from(activity).areNotificationsEnabled()) return false
+    }
+
+    val intent = Intent(activity, StepsForegroundService::class.java)
+    try {
+      startForegroundService(activity, intent)
+      return true
+    } catch (_: Throwable) {
+      prefs.edit().putBoolean(KEY_BG_RUNNING, false).apply()
+      return false
+    }
+  }
+
+  private fun stopBackgroundSteps(): Boolean {
+    val intent = Intent(activity, StepsForegroundService::class.java)
+    return try {
+      activity.stopService(intent)
+      prefs.edit().putBoolean(KEY_BG_RUNNING, false).apply()
+      true
+    } catch (_: Throwable) {
+      false
+    }
+  }
+
+  private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+    val manager = activity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    @Suppress("DEPRECATION")
+    return manager.getRunningServices(Int.MAX_VALUE).any {
+      it.service.className == serviceClass.name
+    }
   }
 }
-

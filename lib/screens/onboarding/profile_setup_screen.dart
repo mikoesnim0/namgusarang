@@ -53,6 +53,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return null;
   }
 
+  void _skip() {
+    final next = (widget.from?.trim().isNotEmpty == true) ? widget.from! : '/home';
+    context.go(next);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final gender = _gender;
@@ -116,6 +121,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         appBar: AppBar(
           title: const Text('정보 설정'),
           automaticallyImplyLeading: false,
+          actions: [
+            TextButton(
+              onPressed: _skip,
+              child: const Text('건너뛰기'),
+            ),
+          ],
         ),
         body: SingleChildScrollView(
           padding: AppTheme.screenPadding,

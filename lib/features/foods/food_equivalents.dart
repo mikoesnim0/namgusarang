@@ -47,26 +47,44 @@ FoodEquivalentResult? suggestFoodEquivalentForKcal(
     ..sort((a, b) => a.kcalPerServing - b.kcalPerServing);
 
   // Prefer a food that yields a "reasonable" servings count (minServings..maxServings)
-  // and has the smallest remainder (closest fit).
+  // and has the smallest absolute difference (closest fit).
+  //
+  // Important UX tweak:
+  // - Using only `~/` (floor division) tends to pick very small foods with large
+  //   servings counts (e.g. 아몬드 28알), which feels unintuitive.
+  // - Here we consider both floor/ceil candidates and break ties by preferring
+  //   fewer servings (i.e. "bigger" foods).
   FoodEquivalent? bestFood;
   var bestServings = 0;
-  var bestRemainder = 1 << 30;
+  var bestAbsDiff = 1 << 30;
 
   for (final food in sorted) {
-    final servings = kcal ~/ food.kcalPerServing;
-    if (servings < minServings || servings > maxServings) continue;
+    final per = food.kcalPerServing;
+    final raw = kcal / per;
+    final candidates = <int>{
+      raw.floor(),
+      raw.ceil(),
+      1,
+    };
 
-    final remainder = kcal - (servings * food.kcalPerServing);
-    final isBetter =
-        remainder < bestRemainder ||
-        (remainder == bestRemainder &&
-            (bestFood == null ||
-                food.kcalPerServing < bestFood.kcalPerServing));
+    for (final s in candidates) {
+      final servings = s.clamp(minServings, maxServings);
+      if (servings < minServings || servings > maxServings) continue;
 
-    if (!isBetter) continue;
-    bestFood = food;
-    bestServings = servings;
-    bestRemainder = remainder;
+      final diff = (kcal - (servings * per)).abs();
+      final isBetter =
+          diff < bestAbsDiff ||
+          (diff == bestAbsDiff &&
+              (bestFood == null ||
+                  servings < bestServings ||
+                  (servings == bestServings &&
+                      per > bestFood.kcalPerServing)));
+
+      if (!isBetter) continue;
+      bestFood = food;
+      bestServings = servings;
+      bestAbsDiff = diff;
+    }
   }
 
   if (bestFood == null) {

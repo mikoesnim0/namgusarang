@@ -29,6 +29,12 @@ import UIKit
           self.requestPermission(result: result)
         case "getTodaySteps":
           self.getTodaySteps(result: result)
+        case "startBackgroundSteps":
+          result(false)
+        case "stopBackgroundSteps":
+          result(false)
+        case "isBackgroundStepsRunning":
+          result(false)
         default:
           result(FlutterMethodNotImplemented)
         }

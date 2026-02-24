@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../features/coupons/coupon_model.dart';
 import '../../features/coupons/coupons_provider.dart';
@@ -132,29 +133,14 @@ class CouponDetailScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(AppSpacing.paddingMD),
                   margin: EdgeInsets.zero,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('인증 코드', style: AppTypography.labelLarge),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusMD),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Center(
-                          child: Text(
-                            c.verificationCode,
-                            style: AppTypography.h3.copyWith(
-                              letterSpacing: 2,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                      Text('사용 방법', style: AppTypography.labelLarge),
+                      const SizedBox(height: 8),
+                      Text(
+                        '매장 방문 후 직원 안내에 따라 앱에서 쿠폰을 사용해 주세요.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -191,10 +177,21 @@ class CouponDetailScreen extends ConsumerWidget {
                         ],
                         if (place.naverPlaceUrl.trim().isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Text(
-                            place.naverPlaceUrl.trim(),
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.primary700,
+                          InkWell(
+                            onTap: () async {
+                              final uri = Uri.tryParse(place!.naverPlaceUrl.trim());
+                              if (uri == null) return;
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            },
+                            child: Text(
+                              '네이버에서 보기',
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.primary700,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ],

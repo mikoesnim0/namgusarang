@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -98,115 +99,122 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
         ? settingsNickname!.trim()
         : '닉네임';
 
-    return Scaffold(
-      backgroundColor: AppColors.gray50,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-                  onTap: () => context.push('/my/info'),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.gray200,
-                        child: Icon(
-                          Icons.person,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 140),
-                        child: Text(
-                          nickname,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.labelLarge,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Align(alignment: Alignment.center, child: Text('친구목록')),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => context.push('/friends/requests'),
-                  child: Text(
-                    incomingCount > 0 ? '대기 $incomingCount' : '대기',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: incomingCount > 0
-                          ? AppColors.primary500
-                          : AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      body: friendsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.paddingMD),
-            child: Text('친구 로드 실패: $e', textAlign: TextAlign.center),
-          ),
-        ),
-        data: (friends) {
-          return ListView.separated(
-            padding: AppTheme.screenPadding.copyWith(bottom: 120),
-            itemCount: friends.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, idx) {
-              if (idx == 0) {
-                _existingFriendUids = friends.map((f) => f.friendUid).toSet();
-                _outgoingRequestUids = outgoingReqs.map((r) => r.toUid).toSet();
-                _incomingRequestUids = incomingReqs
-                    .map((r) => r.fromUid)
-                    .toSet();
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _InviteCard(info: inviteInfo),
-                    const SizedBox(height: 12),
-                    _AddFriendCard(
-                      inviteCodeController: _inviteCodeController,
-                      onSubmit: _submitAdd,
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        context.go('/home');
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.gray50,
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          titleSpacing: 0,
+          title: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                    onTap: () => context.push('/my/info'),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Spacer(),
-                        Text(
-                          '${friends.length}명',
-                          style: AppTypography.bodySmall.copyWith(
+                        const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.gray200,
+                          child: Icon(
+                            Icons.person,
                             color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 140),
+                          child: Text(
+                            nickname,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.labelLarge,
                           ),
                         ),
                       ],
                     ),
-                  ],
-                );
-              }
+                  ),
+                ),
+                const Align(alignment: Alignment.center, child: Text('친구목록')),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push('/friends/requests'),
+                    child: Text(
+                      incomingCount > 0 ? '대기 $incomingCount' : '대기',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: incomingCount > 0
+                            ? AppColors.primary500
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: friendsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.paddingMD),
+              child: Text('친구 로드 실패: $e', textAlign: TextAlign.center),
+            ),
+          ),
+          data: (friends) {
+            return ListView.separated(
+              padding: AppTheme.screenPadding.copyWith(bottom: 120),
+              itemCount: friends.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, idx) {
+                if (idx == 0) {
+                  _existingFriendUids = friends.map((f) => f.friendUid).toSet();
+                  _outgoingRequestUids =
+                      outgoingReqs.map((r) => r.toUid).toSet();
+                  _incomingRequestUids =
+                      incomingReqs.map((r) => r.fromUid).toSet();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _InviteCard(info: inviteInfo),
+                      const SizedBox(height: 12),
+                      _AddFriendCard(
+                        inviteCodeController: _inviteCodeController,
+                        onSubmit: _submitAdd,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Spacer(),
+                          Text(
+                            '${friends.length}명',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
 
-              final friend = friends[idx - 1];
-              return _FriendCard(friend: friend);
-            },
-          );
-        },
+                final friend = friends[idx - 1];
+                return _FriendCard(friend: friend);
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -281,6 +289,24 @@ class _AddFriendCard extends StatelessWidget {
             controller: inviteCodeController,
             hintText: '초대코드(6자리)로 친구 요청',
             onSubmit: onSubmit,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z]')),
+              LengthLimitingTextInputFormatter(6),
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                return newValue.copyWith(
+                  text: newValue.text.toUpperCase(),
+                  selection: newValue.selection,
+                  composing: newValue.composing,
+                );
+              }),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '※ 추천인 코드는 회원가입 시 1회만 입력해요. (여기서는 친구 요청만 전송됩니다)',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -333,6 +359,7 @@ class _InputRow extends StatelessWidget {
     required this.hintText,
     required this.onSubmit,
     this.onChanged,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -341,6 +368,7 @@ class _InputRow extends StatelessWidget {
   final String hintText;
   final VoidCallback onSubmit;
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +385,7 @@ class _InputRow extends StatelessWidget {
               controller: controller,
               focusNode: focusNode,
               textInputAction: TextInputAction.search,
+              inputFormatters: inputFormatters,
               decoration: InputDecoration(
                 hintText: hintText,
                 hintStyle: AppTypography.bodyMedium.copyWith(

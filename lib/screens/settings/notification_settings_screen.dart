@@ -1,135 +1,187 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:hangookji_namgu/features/auth/auth_providers.dart';
+import 'package:hangookji_namgu/features/notifications/push_notifications_provider.dart';
+import 'package:hangookji_namgu/features/settings/settings_model.dart';
+import 'package:hangookji_namgu/features/settings/settings_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_card.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../widgets/gradient_switch.dart';
 
-@immutable
-class _NotificationSettingsState {
-  const _NotificationSettingsState({
-    required this.appPushMission,
-    required this.appPushCoupon,
-    required this.appPushEventBenefit,
-    required this.emailEventBenefit,
-  });
-
-  final bool appPushMission;
-  final bool appPushCoupon;
-  final bool appPushEventBenefit;
-  final bool emailEventBenefit;
-
-  _NotificationSettingsState copyWith({
-    bool? appPushMission,
-    bool? appPushCoupon,
-    bool? appPushEventBenefit,
-    bool? emailEventBenefit,
-  }) {
-    return _NotificationSettingsState(
-      appPushMission: appPushMission ?? this.appPushMission,
-      appPushCoupon: appPushCoupon ?? this.appPushCoupon,
-      appPushEventBenefit: appPushEventBenefit ?? this.appPushEventBenefit,
-      emailEventBenefit: emailEventBenefit ?? this.emailEventBenefit,
-    );
-  }
-}
-
-class _NotificationSettingsController extends StateNotifier<_NotificationSettingsState> {
-  _NotificationSettingsController()
-      : super(const _NotificationSettingsState(
-          appPushMission: true,
-          appPushCoupon: false,
-          appPushEventBenefit: true,
-          emailEventBenefit: true,
-        ));
-
-  void setAppPushMission(bool v) => state = state.copyWith(appPushMission: v);
-  void setAppPushCoupon(bool v) => state = state.copyWith(appPushCoupon: v);
-  void setAppPushEventBenefit(bool v) =>
-      state = state.copyWith(appPushEventBenefit: v);
-  void setEmailEventBenefit(bool v) => state = state.copyWith(emailEventBenefit: v);
-}
-
-final _notificationSettingsProvider = StateNotifierProvider.autoDispose<
-    _NotificationSettingsController, _NotificationSettingsState>((ref) {
-  return _NotificationSettingsController();
-});
-
-class NotificationSettingsScreen extends ConsumerWidget {
+class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = ref.watch(_notificationSettingsProvider);
-    final c = ref.read(_notificationSettingsProvider.notifier);
+  ConsumerState<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
+}
+
+class _NotificationSettingsScreenState
+    extends ConsumerState<NotificationSettingsScreen> {
+  bool _didInitialSync = false;
+
+  Future<void> _syncTopics(
+    NotificationSettings settings, {
+    bool requestPermission = true,
+  }) async {
+    final uid = ref.read(authStateProvider).valueOrNull?.uid ?? '(unknown)';
+    await ref
+        .read(pushNotificationsServiceProvider)
+        .syncTopics(
+          settings: settings,
+          uid: uid,
+          requestPermission: requestPermission,
+        );
+  }
+
+  Future<void> _savePrefsToFirestore({
+    required String uid,
+    required NotificationSettings settings,
+  }) async {
+    if (uid.trim().isEmpty || uid == '(unknown)') return;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(
+        {
+          'notificationPrefs': {
+            'mission': settings.mission,
+            'coupon': settings.coupon,
+            'eventBenefit': settings.eventBenefit,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+        },
+        SetOptions(merge: true),
+      );
+    } catch (_) {
+      // Best-effort: Firestore rules may block this in some environments.
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didInitialSync) return;
+    final settings = ref.read(settingsControllerProvider).valueOrNull;
+    if (settings == null) return;
+
+    _didInitialSync = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        // Do not pop OS permission prompt just by entering this screen.
+        await _syncTopics(settings.notifications, requestPermission: false);
+      } catch (_) {
+        // ignore: best effort
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsAsync = ref.watch(settingsControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('알림')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Padding(
-              padding: AppTheme.screenPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Section(
-                    title: '앱 푸시',
+      body: settingsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('알림 설정을 불러올 수 없어요.\n$e')),
+        data: (settings) {
+          final n = settings.notifications;
+
+          Future<void> updateAndSync(NotificationSettings next) async {
+            final uid =
+                ref.read(authStateProvider).valueOrNull?.uid ?? '(unknown)';
+            await ref
+                .read(settingsControllerProvider.notifier)
+                .updateNotifications(next);
+
+            await _savePrefsToFirestore(uid: uid, settings: next);
+
+            try {
+              await _syncTopics(next, requestPermission: true);
+            } catch (_) {
+              if (!context.mounted) return;
+              context.showAppSnackBar('푸시 알림 설정에 실패했어요.');
+            }
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 100),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Padding(
+                  padding: AppTheme.screenPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _ToggleRow(
-                        title: '미션 관련 알림',
-                        value: s.appPushMission,
-                        onChanged: c.setAppPushMission,
+                      _Section(
+                        title: '앱 푸시',
+                        children: [
+                          _ToggleRow(
+                            title: '미션 관련 알림',
+                            value: n.mission,
+                            onChanged: (v) => updateAndSync(
+                              n.copyWith(mission: v),
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          _ToggleRow(
+                            title: '쿠폰 관련 알림',
+                            value: n.coupon,
+                            onChanged: (v) => updateAndSync(
+                              n.copyWith(coupon: v),
+                            ),
+                          ),
+                          const Divider(height: 1),
+                          _ToggleRow(
+                            title: '이벤트 / 혜택 알림',
+                            value: n.eventBenefit,
+                            onChanged: (v) => updateAndSync(
+                              n.copyWith(eventBenefit: v),
+                            ),
+                          ),
+                        ],
                       ),
-                      const Divider(height: 1),
-                      _ToggleRow(
-                        title: '쿠폰 관련 알림',
-                        value: s.appPushCoupon,
-                        onChanged: c.setAppPushCoupon,
+                      const SizedBox(height: AppSpacing.paddingXL),
+                      _Section(
+                        title: '이메일',
+                        children: [
+                          _ToggleRow(
+                            title: '이벤트 / 혜택 알림',
+                            value: n.notice,
+                            onChanged: (v) async {
+                              // Email marketing is not auto-sent by Firebase; we only store consent for now.
+                              await ref
+                                  .read(settingsControllerProvider.notifier)
+                                  .updateNotifications(n.copyWith(notice: v));
+                            },
+                          ),
+                        ],
                       ),
-                      const Divider(height: 1),
-                      _ToggleRow(
-                        title: '이벤트 / 혜택 알림',
-                        value: s.appPushEventBenefit,
-                        onChanged: c.setAppPushEventBenefit,
+                      const SizedBox(height: AppSpacing.paddingXL),
+                      Text('기타', style: AppTypography.labelLarge),
+                      const SizedBox(height: AppSpacing.paddingSM),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.paddingMD),
+                        child: Text(
+                          '추후 추가될 알림 설정이 이곳에 표시됩니다.',
+                          style: AppTypography.bodySmall,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.paddingXL),
-                  _Section(
-                    title: '이메일',
-                    children: [
-                      _ToggleRow(
-                        title: '이벤트 / 혜택 알림',
-                        value: s.emailEventBenefit,
-                        onChanged: c.setEmailEventBenefit,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.paddingXL),
-                  Text(
-                    '기타',
-                    style: AppTypography.labelLarge,
-                  ),
-                  const SizedBox(height: AppSpacing.paddingSM),
-                  AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.paddingMD),
-                    child: Text(
-                      '추후 추가될 알림 설정이 이곳에 표시됩니다.',
-                      style: AppTypography.bodySmall,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -146,10 +198,7 @@ class _Section extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: AppTypography.labelLarge,
-        ),
+        Text(title, style: AppTypography.labelLarge),
         const SizedBox(height: AppSpacing.paddingSM),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.paddingMD),
@@ -174,7 +223,7 @@ class _ToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 58, // Figma-ish row height
+      height: 58,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -187,13 +236,9 @@ class _ToggleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          GradientSwitch(
-            value: value,
-            onChanged: onChanged,
-          ),
+          GradientSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );
   }
 }
-

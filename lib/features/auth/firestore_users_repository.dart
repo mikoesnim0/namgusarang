@@ -11,6 +11,11 @@ class FirestoreUsersRepository {
   DocumentReference<Map<String, dynamic>> _userRef(String uid) =>
       _db.collection('users').doc(uid);
 
+  DocumentReference<Map<String, dynamic>> _dailyStepsRef(
+    String uid,
+    String yyyyMmDd,
+  ) => _db.collection('users').doc(uid).collection('daily_steps').doc(yyyyMmDd);
+
   /// Creates/updates `users/{uid}` on auth, but does NOT overwrite user-chosen fields
   /// (e.g. nickname) once they exist.
   Future<void> ensureProfileOnAuth({
@@ -220,6 +225,7 @@ class FirestoreUsersRepository {
     final ref = _userRef(uid);
     final today = DateTime.now();
     final todayStr = _yyyyMmDd(today);
+    const goalSteps = 5000;
 
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
@@ -246,26 +252,6 @@ class FirestoreUsersRepository {
               .inDays +
           1;
 
-      // If cycle ended, roll forward to a fresh cycle starting today.
-      if (dayIndex > 10) {
-        effectiveIndex += 1;
-        effectiveStart = DateTime(today.year, today.month, today.day);
-        // Reset per-cycle lists. (We don't carry forward failures/completions.)
-        tx.set(
-          ref,
-          {
-            'cycleStartDate': _yyyyMmDd(effectiveStart),
-            'cycleIndex': effectiveIndex,
-            'cycleCompletedDays': const <int>[],
-            'cycleFailedDays': const <int>[],
-            'lastCycleCheckDate': todayStr,
-          },
-          SetOptions(merge: true),
-        );
-        dayIndex = 1;
-        return;
-      }
-
       final completed = completedRaw
           .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
           .whereType<int>()
@@ -277,14 +263,47 @@ class FirestoreUsersRepository {
           .where((d) => d >= 1 && d <= 10)
           .toSet();
 
-      // Auto-mark past days as failed if they were never completed.
-      // This also fills gaps if the user didn't open the app for a few days.
-      if (dayIndex > 1) {
-        for (var d = 1; d <= dayIndex - 1 && d <= 10; d++) {
-          if (!completed.contains(d) && !failed.contains(d)) {
+      // Finalize past days (up to yesterday) based on `daily_steps` snapshots.
+      // - If the user already completed a day, keep it as completed.
+      // - Otherwise, mark success if recorded steps >= goal, else failed.
+      final pastMax = (dayIndex - 1).clamp(0, 10);
+      if (pastMax >= 1) {
+        for (var d = 1; d <= pastMax; d++) {
+          if (completed.contains(d)) continue;
+          final dateKey = _yyyyMmDd(
+            effectiveStart.add(Duration(days: d - 1)),
+          );
+          final stepSnap = await tx.get(_dailyStepsRef(uid, dateKey));
+          final stepData = stepSnap.data();
+          final steps = (stepData?['steps'] is num)
+              ? (stepData?['steps'] as num).round()
+              : int.tryParse((stepData?['steps'] ?? '').toString()) ?? 0;
+          if (steps >= goalSteps) {
+            completed.add(d);
+            failed.remove(d);
+          } else {
             failed.add(d);
           }
         }
+      }
+
+      // If cycle ended, roll forward to a fresh cycle starting today.
+      // We finalize days 1..10 above before resetting.
+      if (dayIndex > 10) {
+        effectiveIndex += 1;
+        effectiveStart = DateTime(today.year, today.month, today.day);
+        tx.set(
+          ref,
+          {
+            'cycleStartDate': _yyyyMmDd(effectiveStart),
+            'cycleIndex': effectiveIndex,
+            'cycleCompletedDays': const <int>[],
+            'cycleFailedDays': const <int>[],
+            'lastCycleCheckDate': todayStr,
+          },
+          SetOptions(merge: true),
+        );
+        return;
       }
 
       tx.set(

@@ -10,7 +10,9 @@
     "seed_user_coupons": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID",
     "seed_user_coupons_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --uid YOUR_UID --dryRun true",
     "seed_user_coupons_all": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true",
-    "seed_user_coupons_all_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true --dryRun true"
+    "seed_user_coupons_all_dry": "node seed_user_coupons.js --serviceAccount serviceAccountKey.json --csv ../../documents/planning/coupons_template.csv --allUsers true --dryRun true",
+    "delete_legacy_conquerCount_dry": "node delete_users_with_conquerCount.js --serviceAccount serviceAccountKey.json --dryRun true",
+    "delete_legacy_conquerCount": "node delete_users_with_conquerCount.js --serviceAccount serviceAccountKey.json --commit true"
   },
   "keywords": [],
   "author": "",
