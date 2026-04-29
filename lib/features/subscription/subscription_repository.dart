@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -45,6 +46,7 @@ class SubscriptionRepository {
       'purchaseToken': purchase.verificationData.serverVerificationData,
       'productId': purchase.productID,
       'orderId': purchase.purchaseID ?? '',
+      'platform': Platform.isIOS ? 'ios' : 'android',
     });
   }
 }

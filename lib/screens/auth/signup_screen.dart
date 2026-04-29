@@ -100,10 +100,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       return;
     }
 
-    if (_selectedGender.isEmpty) {
-      context.showAppSnackBar('성별을 선택해주세요');
-      return;
-    }
+    // 성별/출생연도는 선택사항 (Apple 5.1.1)
 
     await ref.read(authControllerProvider.notifier).signUpWithEmail(
           email: _emailController.text.trim(),
@@ -456,18 +453,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 // 출생연도
                 AppInput(
-                  label: '출생연도',
+                  label: '출생연도 (선택)',
                   placeholder: '1990',
                   controller: _birthdateController,
                   readOnly: true,
                   onTap: _selectBirthYear,
                   suffixIcon: const Icon(Icons.expand_more),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '출생연도를 선택해주세요';
-                    }
-                    return null;
-                  },
+                  hint: '맞춤 추천에 활용됩니다',
                 ),
 
                 const SizedBox(height: AppSpacing.paddingMD),
@@ -477,9 +469,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '성별',
+                      '성별 (선택)',
                       style: AppTypography.labelMedium.copyWith(
                         color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '맞춤 추천에 활용됩니다',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textHint,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.paddingSM),

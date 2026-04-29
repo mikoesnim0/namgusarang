@@ -148,7 +148,7 @@ class WalkerTrackingScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '오늘 목표 ${_dailyGoal}걸음',
+                          '오늘 목표 $_dailyGoal걸음',
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                           ),

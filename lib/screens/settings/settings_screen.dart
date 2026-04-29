@@ -289,7 +289,7 @@ class SettingsScreen extends ConsumerWidget {
                         _launchExternal(
                           context,
                           title: '개인정보 처리 방침',
-                          url: 'https://doyakmin.com/news/privacy-policy',
+                          url: 'https://doyakmin.com/privacy',
                         );
                       },
                     ),

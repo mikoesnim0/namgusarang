@@ -68,15 +68,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .doc(uid)
           .get();
       final data = snap.data() ?? const <String, dynamic>{};
-      final gender = (data['gender'] as String?)?.trim() ?? '';
-      final height = data['heightCm'];
-      final weight = data['weightKg'];
-      final hasProfile = gender.isNotEmpty &&
-          height is num &&
-          height > 0 &&
-          weight is num &&
-          weight > 0;
-      if (!hasProfile && mounted) {
+      final nickname = (data['nickname'] as String?)?.trim() ?? '';
+      // 닉네임이 없으면 신규 소셜 로그인 사용자 → 온보딩으로 안내
+      // 신체 정보(성별/키/몸무게)는 선택사항 (Apple 5.1.1)
+      if (nickname.isEmpty && mounted) {
         context.go('/onboarding/profile?from=%2Fhome');
         return;
       }
@@ -112,17 +107,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               final email = emailController.text.trim();
               if (email.isEmpty || !email.contains('@')) {
                 if (!mounted) return;
-                this.context.showAppSnackBar('이메일을 확인해주세요.');
+                context.showAppSnackBar('이메일을 확인해주세요.');
                 return;
               }
               try {
                 await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
                 if (!mounted) return;
                 Navigator.of(dialogContext).pop();
-                this.context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
+                context.showAppSnackBar('비밀번호 재설정 메일을 보냈습니다.');
               } catch (e) {
                 if (!mounted) return;
-                this.context.showAppSnackBar(friendlyAuthError(e));
+                context.showAppSnackBar(friendlyAuthError(e));
               }
             },
             child: const Text('보내기'),

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:hangookji_namgu/features/auth/auth_providers.dart';
+import 'package:hangookji_namgu/app_info.dart';
 import 'auth_debug_log.dart';
 
 final authControllerProvider =
@@ -76,7 +77,28 @@ class AuthController extends AsyncNotifier<void> {
         debugPrint('FirebaseException(plugin=${e.plugin}, code=${e.code}, message=${e.message})');
       }
       debugPrintStack(stackTrace: st);
+
+      // Best-effort: send error to Firestore via Cloud Function for remote debugging.
+      _reportErrorToServer(actionName, e, st);
+
       state = AsyncError(AuthActionException(action: actionName, cause: e), st);
+    }
+  }
+
+  void _reportErrorToServer(String action, Object error, StackTrace st) {
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: _functionsRegion);
+      final callable = functions.httpsCallable('logClientError');
+      callable.call(<String, dynamic>{
+        'action': action,
+        'errorType': error.runtimeType.toString(),
+        'errorMessage': error.toString(),
+        'stackTrace': st.toString(),
+        'platform': defaultTargetPlatform.name,
+        'appVersion': AppInfo.versionLabel,
+      });
+    } catch (_) {
+      // Fire-and-forget: never block auth flow for logging.
     }
   }
 
@@ -169,10 +191,17 @@ class AuthController extends AsyncNotifier<void> {
         'kakaoNickname': result.kakaoNickname ?? '',
       });
 
-      await users.upsertOnAuth(user: user, email: result.kakaoEmail ?? user.email);
-      await users.updateProfile(
-        uid: user.uid,
-        nickname: result.kakaoNickname,
+      // 카카오 기본 닉네임("닉네임")은 의미 없으므로 무시
+      final kakaoNick = (result.kakaoNickname != null &&
+              result.kakaoNickname!.trim().isNotEmpty &&
+              result.kakaoNickname!.trim() != '닉네임')
+          ? result.kakaoNickname!.trim()
+          : null;
+
+      await users.ensureProfileOnAuth(
+        user: user,
+        email: result.kakaoEmail ?? user.email,
+        nickname: kakaoNick,
         photoUrl: result.kakaoPhotoURL,
       );
       await _ensurePublicProfileIndex();

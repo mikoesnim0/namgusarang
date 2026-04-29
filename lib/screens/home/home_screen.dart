@@ -12,7 +12,7 @@ import '../../features/foods/food_equivalents.dart';
 import '../../features/home/home_model.dart';
 import '../../features/home/home_provider.dart';
 import '../../features/coupons/coupons_provider.dart';
-import '../../features/coupons/coupon_verification_code.dart';
+import '../../features/missions/missions_provider.dart';
 import '../../features/places/place.dart';
 import '../../features/places/places_provider.dart';
 import '../../features/steps/steps_provider.dart';
@@ -21,14 +21,12 @@ import '../../features/steps/steps_sync_provider.dart';
 import '../../features/steps/step_metrics.dart';
 import '../../features/settings/settings_provider.dart';
 import '../../features/auth/auth_providers.dart';
-import '../../features/notifications/push_notifications_provider.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_card.dart';
-import '../../widgets/app_snackbar.dart';
 import '../../widgets/place_info_popup.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -45,10 +43,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _didScheduleIntroDialog = false;
   String? _introForUid;
-  bool _didSchedulePushPrompt = false;
-  String? _pushPromptForUid;
-  bool _didScheduleStepsPermissionPrompt = false;
-  String? _stepsPermPromptForUid;
+
+  // PRD 07_미션_관리: 10일 중 3일 이상 달성 시 쿠폰 1장.
+  // 회차/목표일수는 Admin의 MissionInstance가 앱에 연동되면 그 값으로 대체된다.
+  static const int _cycleCouponThresholdDays = 3;
+
+  // 동일 회차에서 쿠폰 발급 다이얼로그가 중복으로 뜨는 것을 방지하기 위한 플래그.
+  int? _lastCouponIssuedCycleIndex;
 
   String _fmtDate(DateTime d) {
     final yy = (d.year % 100).toString().padLeft(2, '0');
@@ -78,6 +79,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.watch(stepsSyncControllerProvider);
 
+    // Admin 이 운영하는 활성 미션 + 쿠폰 정책을 읽어 하드코딩 값을 대체한다.
+    // 아직 서버 설정이 없으면 fallback 으로 기존 상수 (5000보/3일/10일) 를 사용한다.
+    final activeMission = ref.watch(activeMissionProvider).valueOrNull;
+    final mission = activeMission?.mission;
+    final serverTargetSteps = mission?.targetSteps ?? 5000;
+    final serverTargetDays = mission?.targetDays ?? _cycleCouponThresholdDays;
+    final serverDurationDays = mission?.durationDays ?? 10;
+
+    // 미션의 목표 걸음수가 바뀌면 HomeController 상태에 반영.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(homeControllerProvider.notifier)
+          .setGoalSteps(serverTargetSteps);
+    });
+
     final home = ref.watch(homeControllerProvider);
     final settingsAsync = ref.watch(settingsControllerProvider);
     final userDoc = ref.watch(currentUserDocProvider).valueOrNull;
@@ -98,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final todayLocal = _localDate(now);
     final todayStr = _yyyyMmDd(todayLocal);
 
-    // Firestore-backed 10-day cycle (local midnight-based).
+    // 회차 길이(durationDays)는 Admin 설정을 따른다. 서버 값을 못 읽으면 10일.
     final cycleStartStr = (userDoc?['cycleStartDate'] as String?)?.trim();
     final cycleStartDate = (cycleStartStr != null && cycleStartStr.isNotEmpty)
         ? DateTime.tryParse(cycleStartStr)
@@ -107,8 +123,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? _localDate(cycleStartDate)
         : todayLocal;
     final rawDayIndex = todayLocal.difference(cycleStartLocal).inDays + 1;
-    final dayIndex = rawDayIndex.clamp(1, 10);
-    final isCycleOver = rawDayIndex > 10;
+    final dayIndex = rawDayIndex.clamp(1, serverDurationDays);
+    final isCycleOver = rawDayIndex > serverDurationDays;
 
     final cycleIndex = (userDoc?['cycleIndex'] is num)
         ? (userDoc?['cycleIndex'] as num).round().clamp(1, 9999)
@@ -120,7 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         completedDaysRaw
             .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
             .whereType<int>()
-            .where((d) => d >= 1 && d <= 10)
+            .where((d) => d >= 1 && d <= serverDurationDays)
             .toSet()
             .toList()
           ..sort();
@@ -130,14 +146,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         failedDaysRaw
             .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
             .whereType<int>()
-            .where((d) => d >= 1 && d <= 10)
+            .where((d) => d >= 1 && d <= serverDurationDays)
             .toSet()
             .toList()
           ..sort();
 
-    final daysLeft = (10 - rawDayIndex).clamp(0, 10);
+    final daysLeft = (serverDurationDays - rawDayIndex).clamp(0, serverDurationDays);
     final cycleStart = isCycleOver ? todayLocal : cycleStartLocal;
-    final cycleEnd = cycleStart.add(const Duration(days: 9));
+    final cycleEnd = cycleStart.add(Duration(days: serverDurationDays - 1));
     final cycleRange = '${_fmtDate(cycleStart)} ~ ${_fmtDate(cycleEnd)}';
     final todayLabel = _fmtTodayLabel(todayLocal);
     final todayIndex = dayIndex;
@@ -149,7 +165,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (authUid != null &&
         (userDoc?['lastCycleCheckDate'] as String?)?.trim() != todayStr) {
       unawaited(
-        ref.read(usersRepositoryProvider).ensureCycleReady(uid: authUid),
+        ref.read(usersRepositoryProvider).ensureCycleReady(
+              uid: authUid,
+              durationDays: serverDurationDays,
+              goalSteps: serverTargetSteps,
+            ),
       );
     }
 
@@ -158,10 +178,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // New user session mounted in the same shell instance.
       _introForUid = authUid;
       _didScheduleIntroDialog = false;
-      _pushPromptForUid = authUid;
-      _didSchedulePushPrompt = false;
-      _stepsPermPromptForUid = authUid;
-      _didScheduleStepsPermissionPrompt = false;
     }
 
     if (authUid != null &&
@@ -207,192 +223,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final permissionStatus = ref
         .watch(stepsPermissionStatusProvider)
         .valueOrNull;
-    final needsStepsPermission =
-        permissionStatus == StepsPermissionStatus.denied ||
-        permissionStatus == StepsPermissionStatus.restricted ||
-        permissionStatus == StepsPermissionStatus.unknown;
-
-    // Steps permission is essential. If not granted, keep prompting (once per app run)
-    // and show the persistent card until granted.
-    if (authUid != null && _stepsPermPromptForUid != authUid) {
-      _stepsPermPromptForUid = authUid;
-      _didScheduleStepsPermissionPrompt = false;
-    }
-    if (authUid != null &&
-        needsStepsPermission &&
-        !_didScheduleStepsPermissionPrompt) {
-      _didScheduleStepsPermissionPrompt = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!context.mounted) return;
-
-        final allow = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Icon
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE6FAF7), // primary50
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.directions_walk_rounded,
-                      size: 40,
-                      color: Color(0xFF10C4AE), // brandTeal
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Title
-                  const Text(
-                    '걸음수로 미션을 달성하세요',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF111111),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  // Subtitle
-                  const Text(
-                    '걸음수를 자동으로 측정하고\n상태바에서 실시간으로 확인할 수 있어요.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF666666),
-                      height: 1.55,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-                  // Primary CTA - full width
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF10C4AE),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        '허용하기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // De-emphasized secondary
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFFAAAAAA),
-                    ),
-                    child: const Text(
-                      '나중에',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-
-        if (!context.mounted) return;
-        if (allow != true) return;
-
-        final ok = await ref.read(stepsRepositoryProvider).requestPermission();
-        ref.invalidate(stepsPermissionStatusProvider);
-        if (ok) ref.invalidate(todayStepsProvider);
-
-        // 권한 허용 직후 잠금화면 알림 팁을 한 번만 표시
-        if (ok && context.mounted) {
-          final prefs = await SharedPreferences.getInstance();
-          const tipKey = 'lockscreen_notif_tip_shown';
-          if (prefs.getBool(tipKey) != true) {
-            await prefs.setBool(tipKey, true);
-            if (context.mounted) {
-              await _showLockScreenTipDialog(context, ref);
-            }
-          }
-        }
-      });
-    }
-
-    // Push prompt: show once per device+user after first login, so the user can
-    // receive mission/coupon/event notifications.
-    if (authUid != null && _pushPromptForUid != authUid) {
-      _pushPromptForUid = authUid;
-      _didSchedulePushPrompt = false;
-    }
-    // If steps permission isn't granted yet, don't stack the push permission dialog.
-    final okToPromptPush =
-        !needsStepsPermission ||
-        permissionStatus == StepsPermissionStatus.notSupported;
-    if (authUid != null && okToPromptPush && !_didSchedulePushPrompt) {
-      _didSchedulePushPrompt = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!context.mounted) return;
-        final prefs = await SharedPreferences.getInstance();
-        final prefKey = 'pushPromptSeen_v1_$authUid';
-        if (prefs.getBool(prefKey) == true) return;
-        await prefs.setBool(prefKey, true);
-
-        final allow = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('알림을 켤까요?'),
-            content: const Text(
-              '미션/쿠폰/이벤트 소식을 알림으로 받아볼 수 있어요.\n\n'
-              '원하지 않으면 “나중에”를 눌러도 되고,\n'
-              '언제든지 마이 > 알림에서 변경할 수 있어요.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('나중에'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('허용'),
-              ),
-            ],
-          ),
-        );
-        if (allow != true) return;
-        try {
-          final settings = await ref.read(settingsControllerProvider.future);
-          await ref
-              .read(pushNotificationsServiceProvider)
-              .syncTopics(
-                settings: settings.notifications,
-                uid: authUid,
-                requestPermission: true,
-              );
-        } catch (_) {
-          if (!context.mounted) return;
-          context.showAppSnackBar('알림 설정에 실패했어요. 마이 > 알림에서 다시 시도해주세요.');
-        }
-      });
-    }
     final showTodoAndDebug = !HomeScreen._hideTodoAndDebugUi && !kReleaseMode;
 
-    // When steps mission completes, issue coupon and mark today's cycle day as completed.
+    // PRD 07: 회차 기간 동안 targetDays 이상 달성 시 쿠폰 1장. 임계값/목표 걸음수는
+    // Admin(mission_instances) 값을 따른다. 서버 값이 없으면 fallback(5000보/3일).
     ref.listen<HomeState>(homeControllerProvider, (prev, next) {
       if (prev == null) return;
       bool isStepsDone(HomeState s) =>
@@ -400,14 +234,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final wasDone = isStepsDone(prev);
       final nowDone = isStepsDone(next);
       if (wasDone || !nowDone) return;
-      unawaited(_issueCouponForStepsMission(context, ref));
-      if (authUid != null) {
-        unawaited(
-          ref
-              .read(usersRepositoryProvider)
-              .markCycleDayCompleted(uid: authUid, dayIndex: todayIndex),
+      if (authUid == null) return;
+
+      () async {
+        // PRD 03: 제재/탈퇴요청/리스크 플래그 계정은 쿠폰 발급 시도 자체를 스킵.
+        // 서버(claimCycleReward)도 동일 검증을 하지만 UX 상 불필요한 호출을 막는다.
+        final userStatus =
+            (userDoc?['status'] as String?)?.trim().toLowerCase();
+        final riskFlagged = userDoc?['riskFlag'] == true;
+        if (userStatus == 'sanctioned' ||
+            userStatus == 'withdrawal_requested' ||
+            riskFlagged) {
+          return;
+        }
+
+        final alreadyCompletedToday = completedDays.contains(todayIndex);
+        await ref
+            .read(usersRepositoryProvider)
+            .markCycleDayCompleted(uid: authUid, dayIndex: todayIndex);
+
+        final projected = alreadyCompletedToday
+            ? completedDays.length
+            : completedDays.length + 1;
+        if (projected < serverTargetDays) return;
+
+        if (!context.mounted) return;
+        await _issueCouponForCycleAchievement(
+          context,
+          ref,
+          cycleIndex: cycleIndex,
+          targetDays: serverTargetDays,
+          targetSteps: serverTargetSteps,
         );
-      }
+      }();
     });
 
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
@@ -421,7 +280,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           _HomeHeader(
             nickname: nickname,
-            roundTitle: '${cycleIndex}회차',
+            roundTitle: '$cycleIndex회차',
             daysLeft: daysLeft,
             onProfileTap: () => context.push('/my/info'),
             onSettingsTap: () => context.push('/settings'),
@@ -660,181 +519,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// 잠금화면 알림 설정 안내 다이얼로그 (걸음수 권한 허용 직후 1회만 표시)
-  Future<void> _showLockScreenTipDialog(
+  /// 회차 미션 달성 시 Cloud Function(`claimCycleReward`)을 호출해 쿠폰을 발급한다.
+  /// 쿠폰 발급/검증/사용내역 로그 작성은 모두 서버에서 수행되고, 앱은 결과만 받아
+  /// 다이얼로그를 띄운다. 중복 발급은 서버 트랜잭션이 차단한다.
+  Future<void> _issueCouponForCycleAchievement(
     BuildContext context,
-    WidgetRef ref,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE6FAF7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.lock_outline_rounded,
-                  size: 34,
-                  color: Color(0xFF10C4AE),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '잠금화면에서도 걸음수 확인',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111111),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '잠금화면에서 실시간 걸음수를 바로 볼 수 있어요.\n아래 설정을 허용해주세요.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF666666),
-                  height: 1.55,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 14),
-              // 경로 안내
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  '설정 → 잠금화면 → 알림 → 허용',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    await ref
-                        .read(stepsRepositoryProvider)
-                        .openLockScreenSettings();
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF10C4AE),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    '설정 바로가기',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 2),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFAAAAAA),
-                ),
-                child: const Text(
-                  '나중에',
-                  style: TextStyle(fontSize: 13),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    WidgetRef ref, {
+    required int cycleIndex,
+    required int targetDays,
+    required int targetSteps,
+  }) async {
+    // 같은 build 사이클에서 listener가 연속 트리거되는 걸 막는 로컬 가드.
+    if (_lastCouponIssuedCycleIndex == cycleIndex) return;
+    _lastCouponIssuedCycleIndex = cycleIndex;
 
-  Future<void> _issueCouponForStepsMission(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null) return;
-
-    // Pick a place (coupon-enabled first).
+    // 쿠폰 사용 가능한 상점 힌트 (서버가 최종 결정. 힌트만 전달).
     final places =
         ref.read(activePlacesProvider).valueOrNull ?? const <Place>[];
-    final place = places.firstWhere(
-      (p) => p.hasCoupons,
-      orElse: () => places.isNotEmpty
-          ? places.first
-          : const Place(id: 'place_001', name: '샘플매장', lat: 0, lng: 0),
+    final hintStoreId = places
+        .firstWhere(
+          (p) => p.hasCoupons && p.useCode.isNotEmpty,
+          orElse: () => const Place(id: '', name: '', lat: 0, lng: 0),
+        )
+        .id;
+
+    final result = await claimCycleReward(
+      storeId: hintStoreId.isEmpty ? null : hintStoreId,
     );
-
-    final templates = const [
-      ('아메리카노 1잔 무료', '매장에서 6자리 인증 코드를 입력하면 사용 처리됩니다.'),
-      ('3,000원 할인 쿠폰', '결제 시 직원에게 6자리 코드를 보여주세요.'),
-      ('1+1 쿠폰', '대상 상품에 한해 1+1 적용됩니다.'),
-    ];
-
-    final idx = DateTime.now().day % templates.length;
-    final (title, description) = templates[idx];
-
-    final now = DateTime.now();
-    final y = now.year.toString().padLeft(4, '0');
-    final m = now.month.toString().padLeft(2, '0');
-    final d = now.day.toString().padLeft(2, '0');
-    final issueKey = 'steps_${y}${m}${d}';
-
-    final code = stableCouponVerificationCode(placeId: place.id, title: title);
-    final expiresAt = now.add(const Duration(days: 7));
-
-    final issued = await ref
-        .read(couponsRepositoryProvider)
-        .issueCouponForUser(
-          uid: user.uid,
-          couponId: issueKey,
-          data: {
-            'title': title,
-            'description': description,
-            'verificationCode': code,
-            'status': 'active',
-            'expiresAt': expiresAt,
-            'placeId': place.id,
-            'placeName': place.name,
-            'issuedFor': issueKey,
-          },
-        );
-
-    if (!issued) return;
+    if (!result.ok) {
+      // 이미 발급 받았거나(already_issued) 서버 검증 실패 - 조용히 종료.
+      // 실패 이유를 디버그 로그 수준에서 남기고 사용자에겐 별도 다이얼로그 없음.
+      return;
+    }
     if (!context.mounted) return;
 
     final action = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('축하합니다!'),
-        content: Text('쿠폰이 발급되었습니다.\n\n[$title]\n${place.name}'),
+        content: Text(
+          '$cycleIndex회차 미션 달성!\n'
+          '($targetDays일 이상 $targetSteps보 달성)\n\n'
+          '쿠폰이 ${result.placeName}에서 사용 가능합니다.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(0),
@@ -854,7 +581,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     if (!context.mounted) return;
     if (action == 1) {
-      context.push('/coupons/$issueKey');
+      context.push('/coupons/${result.couponId}');
     } else if (action == 2) {
       context.go('/coupons');
     }
@@ -1710,29 +1437,6 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
 
       var perm = await Geolocator.checkPermission();
 
-      // Only show the consent dialog when permission isn't already granted.
-      if (perm != LocationPermission.always &&
-          perm != LocationPermission.whileInUse) {
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('위치 접근 동의'),
-            content: const Text('현 위치를 알고 싶으면 동의해주세요.\n동의하십니까?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('동의'),
-              ),
-            ],
-          ),
-        );
-        if (ok != true) return;
-      }
-
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
@@ -1742,8 +1446,8 @@ class _PlacesMiniMapState extends ConsumerState<_PlacesMiniMap> {
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('권한 필요'),
-            content: const Text('위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.'),
+            title: const Text('위치 기능 안내'),
+            content: const Text('현재 위치 표시 기능을 사용하려면\n설정에서 위치 접근을 활성화할 수 있습니다.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

@@ -213,7 +213,10 @@ class FirestoreUsersRepository {
     return '$y-$m-$day';
   }
 
-  /// Ensures cycle fields exist, and rolls to the next cycle when 10 days pass.
+  /// Ensures cycle fields exist, and rolls to the next cycle when [durationDays] pass.
+  ///
+  /// [durationDays] / [goalSteps] 는 Admin(mission_instances) 값을 전달한다.
+  /// 서버 값이 없을 때는 PRD 기본값(10일/5000보)을 넘겨 호출한다.
   ///
   /// Fields used in `users/{uid}`:
   /// - `cycleStartDate` (String, yyyy-MM-dd)
@@ -221,11 +224,14 @@ class FirestoreUsersRepository {
   /// - `cycleCompletedDays` (List<int>)
   /// - `cycleFailedDays` (List<int>)
   /// - `lastCycleCheckDate` (String, yyyy-MM-dd) to avoid repeated writes per day.
-  Future<void> ensureCycleReady({required String uid}) async {
+  Future<void> ensureCycleReady({
+    required String uid,
+    int durationDays = 10,
+    int goalSteps = 5000,
+  }) async {
     final ref = _userRef(uid);
     final today = DateTime.now();
     final todayStr = _yyyyMmDd(today);
-    const goalSteps = 5000;
 
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
@@ -246,7 +252,6 @@ class FirestoreUsersRepository {
       final completedRaw = (data['cycleCompletedDays'] as List?) ?? const [];
       final failedRaw = (data['cycleFailedDays'] as List?) ?? const [];
 
-      // Day index is 1-based within the cycle.
       int dayIndex = today
               .difference(DateTime(effectiveStart.year, effectiveStart.month, effectiveStart.day))
               .inDays +
@@ -255,18 +260,15 @@ class FirestoreUsersRepository {
       final completed = completedRaw
           .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
           .whereType<int>()
-          .where((d) => d >= 1 && d <= 10)
+          .where((d) => d >= 1 && d <= durationDays)
           .toSet();
       final failed = failedRaw
           .map((e) => (e is num) ? e.round() : int.tryParse(e.toString()))
           .whereType<int>()
-          .where((d) => d >= 1 && d <= 10)
+          .where((d) => d >= 1 && d <= durationDays)
           .toSet();
 
-      // Finalize past days (up to yesterday) based on `daily_steps` snapshots.
-      // - If the user already completed a day, keep it as completed.
-      // - Otherwise, mark success if recorded steps >= goal, else failed.
-      final pastMax = (dayIndex - 1).clamp(0, 10);
+      final pastMax = (dayIndex - 1).clamp(0, durationDays);
       if (pastMax >= 1) {
         for (var d = 1; d <= pastMax; d++) {
           if (completed.contains(d)) continue;
@@ -287,9 +289,7 @@ class FirestoreUsersRepository {
         }
       }
 
-      // If cycle ended, roll forward to a fresh cycle starting today.
-      // We finalize days 1..10 above before resetting.
-      if (dayIndex > 10) {
+      if (dayIndex > durationDays) {
         effectiveIndex += 1;
         effectiveStart = DateTime(today.year, today.month, today.day);
         tx.set(

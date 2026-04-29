@@ -78,21 +78,21 @@ service cloud.firestore {
         // Validate todaySteps if present
         && (!('todaySteps' in request.resource.data) || isValidStepCount(request.resource.data.todaySteps))
 
-        // cycleCompletedDays should not be modified by client
-        // (Only Cloud Functions should update this)
-        && (!('cycleCompletedDays' in request.resource.data)
-            || !('cycleCompletedDays' in resource.data)
-            || request.resource.data.cycleCompletedDays == resource.data.cycleCompletedDays)
-
-        // CRITICAL: Block all server-only fields from client modification.
-        // Cloud Functions use Admin SDK which bypasses these rules.
+        // cycleCompletedDays / cycleFailedDays / cycleStartDate / cycleIndex /
+        // lastCycleCheckDate 는 ensureCycleReady / markCycleDayCompleted 가
+        // 클라이언트에서 쓴다. 정확성은 Cloud Function claimCycleReward 의
+        // 서버측 재검증(daily_steps 기반) 으로 보장한다.
+        //
+        // CRITICAL: 구독/추천 관련 서버 전용 필드만 클라이언트 수정 차단.
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny([
               'subscriptionStatus', 'subscriptionExpiresAt',
               'subscriptionPurchaseToken', 'subscriptionProductId',
               'subscriptionActivatedAt', 'subscriptionFreeUntil',
               'subscriptionFreeSource', 'subscriptionFreeUpdatedAt',
-              'referredByUid', 'referredByCode', 'referredAt'
+              'referredByUid', 'referredByCode', 'referredAt',
+              // 회원 제재/상태 (PRD 03): Admin/Cloud Functions 전용.
+              'status', 'riskFlag', 'sanction'
             ]);
 
       // Daily steps subcollection
@@ -149,11 +149,63 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── 임시 완화: 2026-03-01부터 아래를 다시 deny로 전환할 것 ──
-    // Default: 인증된 사용자에게 읽기 허용 (미정의 컬렉션 대비)
-    match /{document=**} {
+    // 친구 시스템: 서브컬렉션들은 앱이 읽을 수 있고 쓰기는 Cloud Functions 만.
+    match /users/{userId}/friends/{friendId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+    match /users/{userId}/friend_requests_in/{fromUid} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+    match /users/{userId}/friend_requests_out/{toUid} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+    match /users/{userId}/fcm_tokens/{token} {
+      // FCM 토큰 등록은 클라이언트가 수행.
+      allow read, write: if isOwner(userId);
+    }
+
+    // Public user 카드: 닉네임 검색 등에 쓰인다. 누구나 읽기 가능, 쓰기는 서버만.
+    match /public_users/{uid} {
       allow read: if isSignedIn();
       allow write: if false;
+    }
+
+    // Admin 운영 컬렉션: 앱은 읽기 전용. 쓰기는 Admin SDK(Cloud Functions/Admin API) 로만.
+    match /coupon_policies/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /store_coupon_overrides/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /mission_templates/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /mission_instances/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // 사용내역/이상거래 로그: 앱은 쓰기 불가, 읽기도 불가 (운영자 전용).
+    match /coupon_usage/{id} {
+      allow read, write: if false;
+    }
+    match /failed_code_attempts/{id} {
+      // 사용자는 자기 실패 기록을 남길 수 있다 (앱 내 쿠폰 사용 실패 시).
+      // 단 읽기는 Admin 전용.
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // Default deny: 미정의 컬렉션은 차단. Admin SDK 는 이 규칙을 bypass 한다.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

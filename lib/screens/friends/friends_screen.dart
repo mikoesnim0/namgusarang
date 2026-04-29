@@ -352,12 +352,11 @@ class _ModeChip extends StatelessWidget {
 
 class _InputRow extends StatelessWidget {
   const _InputRow({
-    super.key,
     required this.controller,
-    this.focusNode,
-    this.layerLink,
     required this.hintText,
     required this.onSubmit,
+    this.focusNode,
+    this.layerLink,
     this.onChanged,
     this.inputFormatters,
   });
@@ -426,7 +425,6 @@ class _InputRow extends StatelessWidget {
 
 class _NicknameSearchRow extends StatelessWidget {
   const _NicknameSearchRow({
-    super.key,
     required this.controller,
     required this.focusNode,
     required this.layerLink,

@@ -40,16 +40,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   }
 
   String? _validateHeight(String? raw) {
-    final v = int.tryParse((raw ?? '').trim());
-    if (v == null) return '키(cm)를 입력해주세요';
-    if (v < 80 || v > 230) return '키는 80~230cm 범위로 입력해주세요';
+    final v = (raw ?? '').trim();
+    if (v.isEmpty) return null; // 선택사항
+    final n = int.tryParse(v);
+    if (n == null || n < 80 || n > 230) return '키는 80~230cm 범위로 입력해주세요';
     return null;
   }
 
   String? _validateWeight(String? raw) {
-    final v = int.tryParse((raw ?? '').trim());
-    if (v == null) return '몸무게(kg)를 입력해주세요';
-    if (v < 20 || v > 250) return '몸무게는 20~250kg 범위로 입력해주세요';
+    final v = (raw ?? '').trim();
+    if (v.isEmpty) return null; // 선택사항
+    final n = int.tryParse(v);
+    if (n == null || n < 20 || n > 250) return '몸무게는 20~250kg 범위로 입력해주세요';
     return null;
   }
 
@@ -60,11 +62,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final gender = _gender;
-    if (gender == null) {
-      context.showAppSnackBar('성별을 선택해주세요');
-      return;
-    }
 
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) {
@@ -72,22 +69,27 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
-    final heightCm = int.parse(_heightController.text.trim());
-    final weightKg = int.parse(_weightController.text.trim());
+    final gender = _gender;
+    final heightRaw = _heightController.text.trim();
+    final weightRaw = _weightController.text.trim();
+    final heightCm = int.tryParse(heightRaw);
+    final weightKg = int.tryParse(weightRaw);
 
     try {
       await ref.read(usersRepositoryProvider).updateProfile(
             uid: user.uid,
-            gender: gender.name,
+            gender: gender?.name,
             heightCm: heightCm,
             weightKg: weightKg,
           );
 
       // Keep local settings in sync (best-effort).
-      final current = ref.read(settingsControllerProvider).valueOrNull;
-      if (current != null) {
-        final next = current.profile.copyWith(gender: gender);
-        await ref.read(settingsControllerProvider.notifier).updateProfile(next);
+      if (gender != null) {
+        final current = ref.read(settingsControllerProvider).valueOrNull;
+        if (current != null) {
+          final next = current.profile.copyWith(gender: gender);
+          await ref.read(settingsControllerProvider.notifier).updateProfile(next);
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -141,11 +143,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('정확한 kcal 계산을 위해 필요해요', style: AppTypography.h5),
+                      Text('맞춤 추천을 위한 정보 (선택)', style: AppTypography.h5),
                       const SizedBox(height: 8),
                       Text(
-                        '성별·키·몸무게 정보로 “걸음 수 → 칼로리”를 더 합당하게 추정합니다.\n'
-                        '언제든 설정에서 변경할 수 있어요.',
+                        '성별·키·몸무게 정보를 입력하시면 걸음 수 기반 칼로리를 '
+                        '더 정확하게 추정할 수 있습니다.\n'
+                        '입력하지 않아도 앱을 이용할 수 있으며, 언제든 설정에서 변경 가능합니다.',
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -160,7 +163,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('성별', style: AppTypography.labelMedium),
+                      Text('성별 (선택)', style: AppTypography.labelMedium),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -185,7 +188,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       ),
                       const SizedBox(height: 16),
                       AppInput(
-                        label: '키 (cm)',
+                        label: '키 (cm) (선택)',
                         placeholder: '예: 170',
                         controller: _heightController,
                         keyboardType: TextInputType.number,
@@ -195,7 +198,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       ),
                       const SizedBox(height: 12),
                       AppInput(
-                        label: '몸무게 (kg)',
+                        label: '몸무게 (kg) (선택)',
                         placeholder: '예: 65',
                         controller: _weightController,
                         keyboardType: TextInputType.number,

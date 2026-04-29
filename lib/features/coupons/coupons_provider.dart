@@ -181,34 +181,74 @@ class CouponsRepository {
     return true;
   }
 
-  Future<bool> redeemForUser({
+  /// 쿠폰 사용 결과. null이면 성공, 문자열이면 실패 사유.
+  Future<String?> redeemForUser({
     required String uid,
     required String couponId,
     required String inputCode,
   }) async {
-    if (!isValidCode(inputCode)) return false;
+    if (!isValidCode(inputCode)) return 'invalid_format';
 
     final ref = _db
         .collection('users')
         .doc(uid)
         .collection(_userCouponsSubcollection)
         .doc(couponId);
-    return _db.runTransaction((tx) async {
+    final result = await _db.runTransaction<String?>((tx) async {
       final snap = await tx.get(ref);
-      if (!snap.exists) return false;
+      if (!snap.exists) return 'not_found';
 
       final data = snap.data() as Map<String, dynamic>;
       final status = (data['status'] as String?) ?? 'active';
       final code = (data['verificationCode'] as String?) ?? '';
-      if (status != 'active') return false;
-      if (code != inputCode) return false;
+
+      if (status == 'used') return 'already_used';
+      if (status != 'active') return 'not_active';
+
+      // 만료 시간이 지난 쿠폰은 사용 불가
+      final expiresAtRaw = data['expiresAt'];
+      if (expiresAtRaw is Timestamp && DateTime.now().isAfter(expiresAtRaw.toDate())) {
+        tx.update(ref, {'status': 'expired', 'updatedAt': FieldValue.serverTimestamp()});
+        return 'expired';
+      }
+
+      if (code != inputCode) return 'wrong_code';
 
       tx.update(ref, {
         'status': 'used',
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      return true;
+      return null; // 성공
     });
+
+    // 실패 시 Firestore에 로그 기록
+    if (result != null) {
+      // 쿠폰 정보 조회 (트랜잭션 밖에서)
+      String placeId = '';
+      String placeName = '';
+      try {
+        final couponSnap = await ref.get();
+        final couponData = couponSnap.data();
+        placeId = (couponData?['placeId'] as String?) ?? '';
+        placeName = (couponData?['placeName'] as String?) ?? '';
+      } catch (_) {}
+
+      try {
+        await _db.collection('failed_code_attempts').add({
+          'userId': uid,
+          'placeId': placeId,
+          'placeName': placeName,
+          'attemptedCode': inputCode,
+          'couponId': couponId,
+          'reason': result,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {
+        // 로그 저장 실패는 쿠폰 사용 흐름을 방해하지 않음
+      }
+    }
+
+    return result;
   }
 }
 
@@ -238,7 +278,7 @@ Coupon _couponFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
 
 Coupon _couponFromMap(String id, Map<String, dynamic> data) {
   final statusRaw = (data['status'] as String?)?.trim().toLowerCase() ?? 'active';
-  final status = switch (statusRaw) {
+  var status = switch (statusRaw) {
     'used' => CouponStatus.used,
     'expired' => CouponStatus.expired,
     _ => CouponStatus.active,
@@ -257,6 +297,12 @@ Coupon _couponFromMap(String id, Map<String, dynamic> data) {
     return null;
   }
 
+  // expiresAt이 지났으면 status를 expired로 전환 (used는 유지)
+  final expiresAt = tsToDate(data['expiresAt']);
+  if (status == CouponStatus.active && DateTime.now().isAfter(expiresAt)) {
+    status = CouponStatus.expired;
+  }
+
   return Coupon(
     id: id,
     title: (data['title'] as String?)?.trim() ?? '',
@@ -265,7 +311,7 @@ Coupon _couponFromMap(String id, Map<String, dynamic> data) {
     placeId: (data['placeId'] as String?)?.trim() ?? '',
     placeName: (data['placeName'] as String?)?.trim() ?? '',
     status: status,
-    expiresAt: tsToDate(data['expiresAt']),
+    expiresAt: expiresAt,
     createdAt: tsToDateNullable(data['createdAt']),
   );
 }

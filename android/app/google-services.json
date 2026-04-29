@@ -14,11 +14,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "924303074294-9arrcom2dbfvvdnnjeuq86hg7qu7jqtt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doyakmin.hangookji.namgu",
+            "certificate_hash": "c7c8e45354bf57978eb9ad4a729414c05f1cbcb2"
+          }
+        },
+        {
           "client_id": "924303074294-egrjc641ji0onu6odn884v0o6tpbdvth.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.doyakmin.hangookji.namgu",
             "certificate_hash": "294a9e3e6b8d43abc10b7fc275fc31613a47cbeb"
+          }
+        },
+        {
+          "client_id": "924303074294-h2vci1do7hjpnmugd98if3dri83rht49.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doyakmin.hangookji.namgu",
+            "certificate_hash": "a7f444e14bdfa9d89eaefd47e23c6ef8a10c0c88"
           }
         },
         {
@@ -57,6 +73,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "924303074294-7713839lgifl27r0olkkcntjfn5p4g3l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.doyakmin.hankookji.namgu",
+            "certificate_hash": "c7c8e45354bf57978eb9ad4a729414c05f1cbcb2"
+          }
+        },
         {
           "client_id": "924303074294-18p27p5j8mjl8omgncuii4trsjfdohu9.apps.googleusercontent.com",
           "client_type": 3

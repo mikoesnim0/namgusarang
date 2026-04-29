@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../features/subscription/subscription_model.dart';
 import '../../features/subscription/subscription_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../widgets/app_snackbar.dart';
 
@@ -44,7 +45,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2FBF9),
+      backgroundColor: AppColors.surfaceVariant,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -107,37 +108,40 @@ class _FreeBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── 히어로 섹션 ──────────────────────────────────────
           const _HeroSection(),
 
-          // ── 가격 + 혜택 카드 ─────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-            child: _PriceCard(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0,
+            ),
+            child: const _PriceCard(),
           ),
 
-          // ── 이용약관 동의 ─────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0,
+            ),
             child: _AgreementRow(agreed: agreed, onTap: onAgreeTap),
           ),
 
-          // ── 유의사항 (접을 수 있는 형태) ──────────────────────
           const Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0,
+            ),
             child: _NoticeSection(),
           ),
 
-          // ── 버튼 ──────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.sm,
+            ),
             child: _SubscribeButton(
               isLoading: isLoading,
               enabled: agreed,
               onTap: onSubscribe,
             ),
           ),
-          // ── 구매 복원 ─────────────────────────────────────
+
           Center(
             child: TextButton(
               onPressed: isLoading ? null : onRestore,
@@ -150,9 +154,8 @@ class _FreeBody extends StatelessWidget {
             ),
           ),
 
-          // ── 자동 갱신 해지 안내 ─────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Text(
               '구독은 확인 시 Apple 계정에 청구되며, 현재 기간이 끝나기 '
               '최소 24시간 전에 자동 갱신을 해제하지 않으면 자동으로 갱신됩니다. '
@@ -165,48 +168,9 @@ class _FreeBody extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
 
-          // ── 법적 링크 (Privacy Policy + Terms of Use) ──
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: () => launchUrl(
-                  Uri.parse('https://doyakmin.com/news/privacy-policy'),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text(
-                  '개인정보처리방침',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textHint,
-                    decoration: TextDecoration.underline,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-              Text(' | ', style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textHint,
-                fontSize: 11,
-              )),
-              TextButton(
-                onPressed: () => launchUrl(
-                  Uri.parse(
-                    'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-                  ),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text(
-                  '이용약관(EULA)',
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textHint,
-                    decoration: TextDecoration.underline,
-                    fontSize: 11,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          const _LegalLinks(),
 
           Center(
             child: TextButton(
@@ -219,7 +183,7 @@ class _FreeBody extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
@@ -227,7 +191,7 @@ class _FreeBody extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 히어로 섹션 (타이틀 + 서브타이틀)
+// 히어로 섹션
 // ---------------------------------------------------------------------------
 
 class _HeroSection extends StatelessWidget {
@@ -237,10 +201,10 @@ class _HeroSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(28, 32, 28, 36),
+      padding: const EdgeInsets.fromLTRB(28, AppSpacing.xl, 28, 36),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFE0F8F4), Color(0xFFF2FBF9)],
+          colors: [AppColors.primary50, AppColors.surfaceVariant],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -254,7 +218,7 @@ class _HeroSection extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -265,11 +229,15 @@ class _HeroSection extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 4),
-              const Text('🌿', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: AppSpacing.xs),
+              const Icon(
+                Icons.eco_outlined,
+                size: 20,
+                color: AppColors.primary500,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           RichText(
             textAlign: TextAlign.center,
             text: TextSpan(
@@ -308,25 +276,26 @@ class _HeroSection extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _PriceCard extends StatelessWidget {
+  const _PriceCard();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLG),
+        border: Border.all(color: AppColors.border, width: 0.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.shadowLight,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         children: [
-          // 가격 (중앙 정렬) — 할인 강조
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -348,7 +317,7 @@ class _PriceCard extends StatelessWidget {
                   decorationColor: AppColors.textDisabled,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Text(
                 '990원',
                 style: AppTypography.h2.copyWith(
@@ -358,7 +327,7 @@ class _PriceCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             '최대 4,500원 혜택',
             style: AppTypography.bodyLarge.copyWith(
@@ -366,22 +335,21 @@ class _PriceCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 20),
-          // 혜택 목록 (둥근 내부 컨테이너)
+          const SizedBox(height: AppSpacing.md),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAF9),
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
             ),
-            child: Column(
+            child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _BenefitCheck(text: '10일 미션 쿠폰 500원 → 1,500원'),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _BenefitCheck(text: '매달 3회차 미션 참여 가능'),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _BenefitCheck(text: '구독 기간 동안 자동 적용'),
               ],
             ),
@@ -434,13 +402,12 @@ class _AgreementRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // 체크박스 + 라벨 (탭하면 동의 토글)
         Expanded(
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSM),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Row(
                 children: [
                   SizedBox(
@@ -472,7 +439,6 @@ class _AgreementRow extends StatelessWidget {
             ),
           ),
         ),
-        // ">" 버튼 (탭하면 약관 페이지로 이동)
         IconButton(
           onPressed: () => context.push('/my/subscription/terms'),
           icon: const Icon(
@@ -514,7 +480,7 @@ class _NoticeSection extends StatelessWidget {
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(bottom: 8),
+        childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
         title: Text(
           '프리미엄 구독 유의사항',
           style: AppTypography.bodySmall.copyWith(
@@ -527,7 +493,7 @@ class _NoticeSection extends StatelessWidget {
         children: _notes
             .map(
               (note) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -557,6 +523,61 @@ class _NoticeSection extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
+// 법적 링크 (Privacy Policy + Terms of Use)
+// ---------------------------------------------------------------------------
+
+class _LegalLinks extends StatelessWidget {
+  const _LegalLinks();
+
+  @override
+  Widget build(BuildContext context) {
+    final linkStyle = AppTypography.bodySmall.copyWith(
+      color: AppColors.textHint,
+      decoration: TextDecoration.underline,
+      decorationColor: AppColors.textHint,
+      fontSize: 11,
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextButton(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: () => launchUrl(
+            Uri.parse('https://doyakmin.com/privacy'),
+            mode: LaunchMode.inAppBrowserView,
+          ),
+          child: Text('개인정보처리방침', style: linkStyle),
+        ),
+        Text(
+          ' | ',
+          style: AppTypography.bodySmall.copyWith(
+            color: AppColors.textHint,
+            fontSize: 11,
+          ),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: () => launchUrl(
+            Uri.parse('https://www.apple.com/legal/macapps/stdeula/'),
+            mode: LaunchMode.inAppBrowserView,
+          ),
+          child: Text('이용약관(EULA)', style: linkStyle),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 구독 버튼
 // ---------------------------------------------------------------------------
 
@@ -574,13 +595,13 @@ class _SubscribeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 56,
+      height: AppSpacing.buttonHeightLG,
       child: FilledButton(
         onPressed: (isLoading || !enabled) ? null : onTap,
         style: FilledButton.styleFrom(
           backgroundColor: enabled ? AppColors.brandTeal : AppColors.gray300,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
           ),
           disabledBackgroundColor: AppColors.gray200,
         ),
@@ -626,33 +647,38 @@ class _PremiumActiveBody extends StatelessWidget {
         : null;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── 구독 상태 배지 + 정보 ──
+          // ── 구독 상태 배지 + 정보
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLG),
+              border: Border.all(color: AppColors.border, width: 0.5),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 배지
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                      horizontal: AppSpacing.sm + 4, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F8F5),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.primary50,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSM),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🌿', style: TextStyle(fontSize: 16)),
+                      const Icon(
+                        Icons.eco_outlined,
+                        size: 16,
+                        color: AppColors.primary600,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         isReferral ? '초대 혜택 이용 중' : '프리미엄 구독 중',
@@ -664,7 +690,7 @@ class _PremiumActiveBody extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.sm + 6),
                 if (nextPayDate != null)
                   Text(
                     '다음 결제일 : $nextPayDate',
@@ -672,7 +698,7 @@ class _PremiumActiveBody extends StatelessWidget {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '남은 회차 : ${status.missionsPerMonth}회',
                   style: AppTypography.bodyMedium.copyWith(
@@ -682,70 +708,40 @@ class _PremiumActiveBody extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sm + 6),
 
-          // ── 이번 달 혜택 현황 ──
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '이번 달 혜택 현황',
-                  style: AppTypography.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _CheckItem(text: '프리미엄 쿠폰 1,500원 × 2회 지급 완료'),
-                const SizedBox(height: 8),
-                _CheckItem(text: '남은 미션 회차 : 1회'),
-                const SizedBox(height: 8),
-                _CheckItem(text: '누적 혜택 금액 : 3,000원'),
-              ],
-            ),
+          // ── 이번 달 혜택 현황
+          _InfoCard(
+            title: '이번 달 혜택 현황',
+            children: const [
+              _CheckItem(text: '프리미엄 쿠폰 1,500원 × 2회 지급 완료'),
+              SizedBox(height: AppSpacing.sm),
+              _CheckItem(text: '남은 미션 회차 : 1회'),
+              SizedBox(height: AppSpacing.sm),
+              _CheckItem(text: '누적 혜택 금액 : 3,000원'),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sm + 6),
 
-          // ── 프리미엄 혜택 ──
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '프리미엄 혜택',
-                  style: AppTypography.bodyLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _CheckItem(text: '10일 미션 3회 참여'),
-                const SizedBox(height: 8),
-                _CheckItem(text: '쿠폰 1,500원 지급'),
-                const SizedBox(height: 8),
-                _CheckItem(text: '자동 적용 중'),
-              ],
-            ),
+          // ── 프리미엄 혜택
+          _InfoCard(
+            title: '프리미엄 혜택',
+            children: const [
+              _CheckItem(text: '10일 미션 3회 참여'),
+              SizedBox(height: AppSpacing.sm),
+              _CheckItem(text: '쿠폰 1,500원 지급'),
+              SizedBox(height: AppSpacing.sm),
+              _CheckItem(text: '자동 적용 중'),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.sm + 6),
 
-          // ── 관리 메뉴 타일 ──
+          // ── 관리 메뉴 타일
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLG),
+              border: Border.all(color: AppColors.border, width: 0.5),
             ),
             child: Column(
               children: [
@@ -755,7 +751,8 @@ class _PremiumActiveBody extends StatelessWidget {
                     label: '결제수단 변경',
                     onTap: onManage,
                   ),
-                if (!isReferral) const Divider(height: 1, indent: 52),
+                if (!isReferral)
+                  const Divider(height: 1, indent: 52),
                 _ManageTile(
                   icon: Icons.description_outlined,
                   label: '이용약관 보기',
@@ -770,13 +767,11 @@ class _PremiumActiveBody extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.md),
 
-          // ── 유의사항 (접을 수 있는 형태) ──
           const _NoticeSection(),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
 
-          // ── 구독 해지 예약 버튼 ──
           if (!isReferral)
             SizedBox(
               height: 52,
@@ -784,7 +779,7 @@ class _PremiumActiveBody extends StatelessWidget {
                 onPressed: onManage,
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMD),
                   ),
                   side: const BorderSide(color: AppColors.gray300),
                 ),
@@ -797,6 +792,42 @@ class _PremiumActiveBody extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 정보 카드 (제목 + 내용)
+// ---------------------------------------------------------------------------
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLG),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTypography.bodyLarge.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm + 6),
+          ...children,
         ],
       ),
     );
@@ -823,11 +854,14 @@ class _ManageTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm + 6,
+        ),
         child: Row(
           children: [
             Icon(icon, size: 22, color: AppColors.textSecondary),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.sm + 6),
             Expanded(
               child: Text(
                 label,
@@ -849,7 +883,7 @@ class _ManageTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 체크 아이템 (✓ 텍스트)
+// 체크 아이템
 // ---------------------------------------------------------------------------
 
 class _CheckItem extends StatelessWidget {
@@ -866,7 +900,7 @@ class _CheckItem extends StatelessWidget {
           size: 18,
           color: AppColors.primary600,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
             text,

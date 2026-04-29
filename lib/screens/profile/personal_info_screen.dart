@@ -203,7 +203,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                         return Row(
                           children: [
                             Text(
-                              '${_fmtDate(date)}',
+                              _fmtDate(date),
                               style: AppTypography.bodySmall.copyWith(
                                 color: AppColors.textSecondary,
                               ),

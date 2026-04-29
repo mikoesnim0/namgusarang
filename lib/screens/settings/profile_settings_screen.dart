@@ -262,7 +262,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             _didHydrate = true;
           }
           final birthYear = (userDoc?['birthdate'] as String?)?.trim() ?? '';
-          final birthYearLabel = birthYear.isNotEmpty ? '${birthYear}년' : '미설정';
+          final birthYearLabel = birthYear.isNotEmpty ? '$birthYear년' : '미설정';
           final email = (authUser?.email?.trim().isNotEmpty == true)
               ? authUser!.email!.trim()
               : ((userDoc?['email'] as String?)?.trim().isNotEmpty == true
@@ -564,7 +564,7 @@ class _DropdownRow<T> extends StatelessWidget {
         Text(label, style: AppTypography.labelMedium),
         const SizedBox(height: AppSpacing.paddingSM),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           decoration: const InputDecoration(),
           items: items
               .map(

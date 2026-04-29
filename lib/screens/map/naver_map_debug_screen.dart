@@ -248,29 +248,6 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
 
       var perm = await Geolocator.checkPermission();
 
-      // Only show the consent dialog when permission isn't already granted.
-      if (perm != LocationPermission.always &&
-          perm != LocationPermission.whileInUse) {
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('위치 접근 동의'),
-            content: const Text('현 위치를 알고 싶으면 동의해주세요.\n동의하십니까?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('동의'),
-              ),
-            ],
-          ),
-        );
-        if (ok != true) return;
-      }
-
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
@@ -280,8 +257,8 @@ class _NaverMapDebugScreenState extends ConsumerState<NaverMapDebugScreen> {
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('권한 필요'),
-            content: const Text('위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.'),
+            title: const Text('위치 기능 안내'),
+            content: const Text('현재 위치 표시 기능을 사용하려면\n설정에서 위치 접근을 활성화할 수 있습니다.'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

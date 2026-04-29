@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:cloud_functions/cloud_functions.dart';
+
 import '../../features/coupons/coupon_model.dart';
 import '../../features/coupons/coupons_provider.dart';
 import '../../features/home/home_model.dart';
@@ -637,11 +639,35 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
     }
 
     final code = _code;
-    final ok = await ref
-        .read(couponsRepositoryProvider)
-        .redeemForUser(uid: uid, couponId: widget.coupon.id, inputCode: code);
+    // PRD 02/08: 쿠폰 사용 검증은 서버(redeemCoupon)가 수행하고
+    // coupon_usage 컬렉션에 redeemed 이벤트 로그를 남긴다.
+    // 실패 시 failed_code_attempts 에 자동 기록되어 Admin 이상거래 화면에서 확인 가능.
+    String? failReason;
+    try {
+      final functions = FirebaseFunctions.instanceFor(region: 'asia-northeast3');
+      await functions.httpsCallable('redeemCoupon').call<Map<Object?, Object?>>({
+        'couponId': widget.coupon.id,
+        'code': code,
+      });
+    } on FirebaseFunctionsException catch (e) {
+      // 서버는 message 에 "쿠폰 사용 실패: {reason}" 형태로 내려준다.
+      final msg = e.message ?? '';
+      if (msg.contains('expired')) {
+        failReason = 'expired';
+      } else if (msg.contains('already_used')) {
+        failReason = 'already_used';
+      } else if (msg.contains('wrong_code')) {
+        failReason = 'wrong_code';
+      } else if (msg.contains('not_found')) {
+        failReason = 'not_found';
+      } else if (msg.contains('not_active')) {
+        failReason = 'not_active';
+      } else {
+        failReason = 'unknown';
+      }
+    }
 
-    if (ok) {
+    if (failReason == null) {
       if (!mounted) return;
       Navigator.of(context).pop();
       ref
@@ -651,8 +677,17 @@ class _RedeemSheetState extends ConsumerState<_RedeemSheet> {
       return;
     }
 
+    final errorMsg = switch (failReason) {
+      'expired' => '만료된 쿠폰입니다',
+      'already_used' => '이미 사용된 쿠폰입니다',
+      'wrong_code' => '코드가 올바르지 않습니다',
+      'not_active' => '사용할 수 없는 쿠폰입니다',
+      'not_found' => '쿠폰을 찾을 수 없습니다',
+      _ => '코드가 올바르지 않습니다 (6자리 숫자)',
+    };
+
     setState(() {
-      _error = '코드가 올바르지 않습니다 (6자리 숫자)';
+      _error = errorMsg;
       _code = '';
     });
   }
