@@ -2,8 +2,14 @@
 
 작성일: 2026-07-27
 
-> **상세 인수인계 문서는 Admin 레포에 있습니다** → `doyakmininc/walkerholic-admin` 의 `HANDOFF.md`
+> 📍 **전체 인수인계는 Admin 레포에 있습니다** → `doyakmininc/walkerholic-admin`
+> - `START_HERE.md` — **여기서 시작.** 전체 지도 + 🔑 자격증명 인벤토리 + 첫 주 체크리스트
+> - `HANDOFF.md` — Admin 기술 상세
+> - `AI_인수_프롬프트.md` — 🤖 AI에게 시키는 법 (**프롬프트 4번이 이 앱 전용**)
+>
 > 이 노트는 앱 레포의 **현재 상태와 주의사항만** 짧게 적은 것입니다.
+>
+> ⚠️ 이 앱을 빌드하려면 레포에 없는 파일 3개(`dart_defines.env`, `android/key.properties`, `android/upload-keystore.jks`)가 필요합니다. `START_HERE.md` 3-B 참조.
 
 ---
 
